@@ -40,8 +40,8 @@ export async function fetchAndPrintCryptoPosts(): Promise<void> {
     console.log(`  Created: ${new Date(detailedPost.created * 1000).toISOString()}`);
     console.log(`  URL: ${detailedPost.web_url || "N/A"}`);
 
-    if (detailedPost.content?.html) {
-      const preview = detailedPost.content.html.substring(0, 200).replace(/\n/g, " ");
+    if (detailedPost.content?.free.web) {
+      const preview = detailedPost.content.free.web.substring(0, 200).replace(/\n/g, " ");
       console.log(`  Content preview: ${preview}...`);
     }
   }
