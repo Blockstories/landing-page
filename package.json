@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test-beehiiv": "tsx services/beehiivPostService.ts",
+    "test-beehiiv": "tsx services/processBeehiivPost.ts",
     "test-softr": "tsx services/softrService.ts",
     "test-openai": "tsx services/openaiService.ts",
+    "test-webhook": "tsx services/testWebhook.ts",
+    "webhook-server": "tsx api/webhooks/server.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

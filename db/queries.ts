@@ -2,6 +2,8 @@ import { db } from "./client.js";
 import { Article } from "./types.js";
 import { mapRowToArticle } from "./mappers/articleMapper.js";
 
+export { Article };
+
 /**
  * Get newest articles
  */
