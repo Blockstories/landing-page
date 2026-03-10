@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test-beehiiv": "tsx services/beehiivPostService.ts",
+    "test-softr": "tsx services/softrService.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
