@@ -80,3 +80,39 @@ export async function getRecords(
 
   return handleResponse<RecordsResponse>(response);
 }
+
+// Table schema types
+export interface TableField {
+  id: string;
+  name: string;
+  type: string;
+  settings?: Record<string, unknown>;
+}
+
+export interface TableSchema {
+  id: string;
+  name: string;
+  fields: TableField[];
+}
+
+export interface TableSchemaResponse {
+  data: TableSchema;
+}
+
+/**
+ * Get table schema including field definitions
+ */
+export async function getTableSchema(
+  databaseId: string,
+  tableId: string
+): Promise<TableSchema> {
+  const url = `${SOFTR_BASE_URL}/databases/${databaseId}/tables/${tableId}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getAuthHeaders()
+  });
+
+  const result = await handleResponse<TableSchemaResponse>(response);
+  return result.data;
+}

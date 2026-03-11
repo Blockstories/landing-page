@@ -1,72 +1,127 @@
 import "dotenv/config";
-import { getRecords } from "../integrations/softr.js";
+import { getRecords, getTableSchema, GetRecordsOptions, RecordsResponse, Record } from "../integrations/softr.js";
 
-const SOFTR_DATABASE_ID = process.env.SOFTR_DATABASE_ID || "";
-const SOFTR_TABLE_ID = process.env.SOFTR_TABLE_ID || "";
-const SOFTR_VIEW_ID = process.env.SOFTR_VIEW_ID || "";
+// Cache for field mapping (fieldId -> fieldName)
+let fieldMappingCache: Map<string, string> | null = null;
+let fieldMappingCacheTime: number | null = null;
+const FIELD_MAPPING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-async function testSoftrIntegration() {
-  console.log("Testing Softr Integration...\n");
+export interface FieldMapping {
+  [fieldId: string]: string;
+}
 
-  if (!process.env.SOFTR_API_KEY) {
-    console.error("Error: SOFTR_API_KEY not set in environment");
-    process.exit(1);
-  }
+export interface MappedRecordsResponse extends Omit<RecordsResponse, 'data'> {
+  data: MappedRecord[];
+}
 
-  if (!SOFTR_DATABASE_ID || !SOFTR_TABLE_ID) {
-    console.error("Error: SOFTR_DATABASE_ID and SOFTR_TABLE_ID must be set in environment");
-    process.exit(1);
+export interface MappedRecord extends Omit<Record, 'fields'> {
+  fields: Record<string, unknown>;
+  _originalFields?: Record<string, unknown>;
+}
+
+/**
+ * Fetch and cache field mapping from table schema
+ */
+export async function getFieldMapping(
+  databaseId: string,
+  tableId: string
+): Promise<FieldMapping> {
+  // Return cached mapping if still valid
+  if (
+    fieldMappingCache &&
+    fieldMappingCacheTime &&
+    Date.now() - fieldMappingCacheTime < FIELD_MAPPING_CACHE_TTL
+  ) {
+    return Object.fromEntries(fieldMappingCache);
   }
 
   try {
-    // Test 1: Get records using pre-sorted view
-    console.log("Test 1: Get records using view (pre-sorted by J8DwC DESC)");
-    console.log("----------------------------------------------------------");
+    const schema = await getTableSchema(databaseId, tableId);
+    const mapping = new Map<string, string>();
 
-    const sortedResult = await getRecords(
-      SOFTR_DATABASE_ID,
-      SOFTR_TABLE_ID,
-      {
-        viewId: SOFTR_VIEW_ID,
-        paging: { limit: 10 }
+    schema.fields.forEach((field) => {
+      if (field.id && field.name) {
+        mapping.set(field.id, field.name);
       }
-    );
-
-    console.log(`Found ${sortedResult.data.length} records (total: ${sortedResult.metadata.total})`);
-    console.log("Metadata:", sortedResult.metadata);
-    console.log("\nJ8DwC values (sorted by view):");
-    sortedResult.data.forEach((record, index) => {
-      const j8dwc = record.fields['J8DwC'] || 'N/A';
-      const title = record.fields['O9pID'] || 'No title';
-      console.log(`  ${index + 1}. ${j8dwc} - ${title}`);
     });
 
-    // Test 2: Get records with field names
-    console.log("\n\nTest 2: Get records with field names");
-    console.log("-------------------------------------");
+    fieldMappingCache = mapping;
+    fieldMappingCacheTime = Date.now();
 
-    const fullResult = await getRecords(
-      SOFTR_DATABASE_ID,
-      SOFTR_TABLE_ID,
-      {
-        fieldNames: true,
-        paging: { offset: 0, limit: 3 }
-      }
-    );
-
-    console.log(`Found ${fullResult.data.length} records`);
-    fullResult.data.forEach((record, index) => {
-      console.log(`\nRecord ${index + 1}:`);
-      console.log(`  ID: ${record.id}`);
-      console.log(`  Fields (with field names):`, record.fields);
-    });
-
-    console.log("\n✅ All tests completed successfully!");
-
+    return Object.fromEntries(mapping);
   } catch (error) {
-    console.error("\n❌ Test failed:", error);
-    process.exit(1);
+    console.error("Failed to fetch field mapping:", error);
+    return {};
   }
 }
 
-testSoftrIntegration();
+/**
+ * Clear the field mapping cache
+ */
+export function clearFieldMappingCache(): void {
+  fieldMappingCache = null;
+  fieldMappingCacheTime = null;
+}
+
+/**
+ * Transform a single record's fields from IDs to readable names
+ */
+export function transformRecordFields(
+  record: Record,
+  fieldMapping: FieldMapping
+): MappedRecord {
+  if (!record || !record.fields) {
+    return record as MappedRecord;
+  }
+
+  const transformedFields: Record<string, unknown> = {};
+
+  Object.keys(record.fields).forEach((fieldId) => {
+    const fieldName = fieldMapping[fieldId] || fieldId;
+    transformedFields[fieldName] = record.fields[fieldId];
+  });
+
+  return {
+    ...record,
+    fields: transformedFields,
+    _originalFields: record.fields,
+  };
+}
+
+/**
+ * Get records with mapped field names (human-readable)
+ * This is the primary method for consuming Softr data
+ */
+export async function getRecordsWithMappedFields(
+  databaseId: string,
+  tableId: string,
+  options: GetRecordsOptions = {}
+): Promise<MappedRecordsResponse> {
+  // Fetch records and schema in parallel
+  const [records, fieldMapping] = await Promise.all([
+    getRecords(databaseId, tableId, options),
+    getFieldMapping(databaseId, tableId),
+  ]);
+
+  // Transform records
+  const mappedData = records.data.map((record) =>
+    transformRecordFields(record, fieldMapping)
+  );
+
+  return {
+    ...records,
+    data: mappedData,
+  };
+}
+
+/**
+ * Get raw records (field IDs)
+ * Use this when you need the original Softr field IDs
+ */
+export async function getRecordsRaw(
+  databaseId: string,
+  tableId: string,
+  options: GetRecordsOptions = {}
+): Promise<RecordsResponse> {
+  return getRecords(databaseId, tableId, options);
+}

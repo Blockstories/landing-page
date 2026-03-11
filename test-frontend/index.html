@@ -194,6 +194,10 @@
       <input type="checkbox" id="softrFieldNames">
       <label for="softrFieldNames" style="margin-bottom: 0;">Use field names (human-readable)</label>
     </div>
+    <div class="form-group checkbox-group">
+      <input type="checkbox" id="softrMapFields" checked>
+      <label for="softrMapFields" style="margin-bottom: 0;">Map field IDs to names (via schema)</label>
+    </div>
     <button id="softrBtn">Fetch Records</button>
     <div id="softr-meta" style="margin-top: 16px; color: #666; font-size: 14px;"></div>
     <div id="softr-result"></div>
@@ -353,6 +357,7 @@
       const limit = document.getElementById('softrLimit').value || '10';
       const offset = document.getElementById('softrOffset').value || '0';
       const fieldNames = document.getElementById('softrFieldNames').checked;
+      const mapFields = document.getElementById('softrMapFields').checked;
       const resultDiv = document.getElementById('softr-result');
       const metaDiv = document.getElementById('softr-meta');
 
@@ -368,7 +373,9 @@
         params.append('offset', offset);
         if (fieldNames) params.append('fieldNames', 'true');
 
-        const response = await fetch(`/api/softr/records?${params}`);
+        // Use mapped endpoint if checkbox is checked (default)
+        const endpoint = mapFields ? '/api/softr/records/mapped' : '/api/softr/records/raw';
+        const response = await fetch(`${endpoint}?${params}`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -377,7 +384,13 @@
         }
 
         const records = data.records;
-        metaDiv.textContent = `Found ${records.data.length} records (total: ${records.metadata.total}, offset: ${records.metadata.offset}, limit: ${records.metadata.limit})`;
+        let metaText = `Found ${records.data.length} records (total: ${records.metadata.total}, offset: ${records.metadata.offset}, limit: ${records.metadata.limit})`;
+        if (mapFields) {
+          metaText += ' • Field names mapped';
+        } else {
+          metaText += ' • Raw field IDs';
+        }
+        metaDiv.textContent = metaText;
 
         resultDiv.innerHTML = '';
         records.data.forEach((record, index) => {
