@@ -37,9 +37,9 @@ export async function getArticleByPublicationIdAndPostId(
  */
 export async function createArticle(article: Omit<Article, "id">): Promise<Article> {
   await db.execute(
-    `INSERT INTO articles 
-      (beehiiv_post_id, beehiiv_publication_id, title, subtitle, authors, publish_date, tags, thumbnail_url, web_url, summary, content)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO articles
+      (beehiiv_post_id, beehiiv_publication_id, title, subtitle, authors, publish_date, status, tags, thumbnail_url, web_url, summary, content)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       article.beehiivPostId,
       article.beehiivPublicationId,
@@ -47,6 +47,7 @@ export async function createArticle(article: Omit<Article, "id">): Promise<Artic
       article.subtitle,
       JSON.stringify(article.authors),
       article.publishDate,
+      article.status,
       JSON.stringify(article.tags),
       article.thumbnailUrl,
       article.webUrl,
@@ -59,4 +60,32 @@ export async function createArticle(article: Omit<Article, "id">): Promise<Artic
   const saved = await getArticleByPublicationIdAndPostId(article.beehiivPublicationId, article.beehiivPostId);
   if (!saved) throw new Error("Failed to retrieve newly inserted article");
   return saved;
+}
+
+/**
+ * Update article status
+ */
+export async function updateArticleStatus(
+  publicationId: string,
+  postId: string,
+  status: Article["status"]
+): Promise<void> {
+  await db.execute(
+    "UPDATE articles SET status = ? WHERE beehiiv_publication_id = ? AND beehiiv_post_id = ?",
+    [status, publicationId, postId]
+  );
+}
+
+/**
+ * Update article content
+ */
+export async function updateArticleContent(
+  publicationId: string,
+  postId: string,
+  content: string
+): Promise<void> {
+  await db.execute(
+    "UPDATE articles SET content = ? WHERE beehiiv_publication_id = ? AND beehiiv_post_id = ?",
+    [content, publicationId, postId]
+  );
 }

@@ -10,13 +10,14 @@ export async function processBeehiivPost(
   publicationId: string,
   postId: string
 ): Promise<Article> {
-  // 1. Fetch post from Beehiiv
-  const post = await getPostByPublicationIdAndPostId(publicationId, postId);
+  // 1. Fetch post from Beehiiv with content
+  const post = await getPostByPublicationIdAndPostId(publicationId, postId, ["free_web_content"]);
 
   // 2. Generate LLM summary if content exists
+  const content = post.free_web_content || post.content?.free?.web;
   let summary: string | undefined;
-  if (post.content?.free?.web) {
-    summary = await generateArticleSummary(post.title, post.content.free.web);
+  if (content) {
+    summary = await generateArticleSummary(post.title, content);
   }
 
   // 3. Store article in database
@@ -27,11 +28,12 @@ export async function processBeehiivPost(
     subtitle: post.subtitle,
     authors: post.authors,
     publishDate: post.publish_date || post.created,
+    status: post.status,
     tags: post.content_tags || [],
     thumbnailUrl: post.thumbnail_url,
     webUrl: post.web_url,
     summary,
-    content: post.content?.free?.web
+    content: post.free_web_content || post.content?.free?.web
   });
 
   return article;

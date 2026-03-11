@@ -8,6 +8,7 @@
     "test-openai": "tsx services/openaiService.ts",
     "test-webhook": "tsx services/testWebhook.ts",
     "webhook-server": "tsx api/webhooks/server.ts",
+    "backfill-posts": "vite-node scripts/backfillPosts.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -16,6 +17,7 @@
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",
+    "vite-node": "^5.3.0",
     "vitest": "^4.0.18"
   },
   "dependencies": {

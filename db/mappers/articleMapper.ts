@@ -13,6 +13,7 @@ export function mapRowToArticle(row: any): Article {
     subtitle: row.subtitle,
     authors: row.authors ? JSON.parse(row.authors) : [],
     publishDate: row.publish_date,
+    status: row.status,
     tags: row.tags ? JSON.parse(row.tags) : [],
     thumbnailUrl: row.thumbnail_url,
     webUrl: row.web_url,

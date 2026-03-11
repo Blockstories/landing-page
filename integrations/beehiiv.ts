@@ -48,6 +48,7 @@ export interface BeehiivPost {
   publish_date: number | null;
   displayed_date: number | null;
   content?: BeehiivPostContentTier;
+  free_web_content?: string;
 }
 
 export interface BeehiivPostsResponse {
@@ -61,13 +62,24 @@ export interface GetPostsOptions {
   limit?: number;
   page?: number;
   status?: "draft" | "confirmed" | "scheduled" | "archived";
+  expand?: string[];
 }
 
 export async function getPostByPublicationIdAndPostId(
   pubId: string,
-  postId: string
+  postId: string,
+  expand?: string[]
 ): Promise<BeehiivPost> {
-  const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/posts/${postId}`;
+  const params = new URLSearchParams();
+  if (expand) {
+    for (const field of expand) {
+      params.append("expand", field);
+    }
+  }
+
+  const queryString = params.toString();
+  const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/posts/${postId}${queryString ? "?" + queryString : ""}`;
+
   const response = await fetch(url, {
     method: "GET",
     headers: getAuthHeaders()
@@ -86,6 +98,11 @@ export async function getPostsByPublicationId(
   if (options.limit) params.append("limit", options.limit.toString());
   if (options.page) params.append("page", options.page.toString());
   if (options.status) params.append("status", options.status);
+  if (options.expand) {
+    for (const field of options.expand) {
+      params.append("expand", field);
+    }
+  }
 
   const queryString = params.toString();
   const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/posts${queryString ? "?" + queryString : ""}`;

@@ -124,6 +124,7 @@ describe("Beehiiv Webhook Handler", () => {
       title: "Test",
       authors: [],
       publishDate: 1234567890,
+      status: "confirmed",
       tags: []
     } as queries.Article);
 
@@ -152,6 +153,7 @@ describe("Beehiiv Webhook Handler", () => {
       title: "Test Article",
       authors: ["Author"],
       publishDate: 1234567890,
+      status: "confirmed",
       tags: ["crypto"]
     } as queries.Article);
 

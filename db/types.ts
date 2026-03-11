@@ -1,4 +1,6 @@
 // /db/types.ts
+export type ArticleStatus = "draft" | "confirmed" | "scheduled" | "archived";
+
 export interface Article {
   id: number;
   beehiivPostId: string;
@@ -7,6 +9,7 @@ export interface Article {
   subtitle?: string;
   authors: string[];
   publishDate: number;
+  status: ArticleStatus;
   tags: string[];
   thumbnailUrl?: string;
   webUrl?: string;
