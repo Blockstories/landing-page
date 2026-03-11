@@ -9,6 +9,7 @@
     "test-webhook": "tsx services/testWebhook.ts",
     "webhook-server": "tsx api/webhooks/server.ts",
     "backfill-posts": "vite-node scripts/backfillPosts.ts",
+    "test-frontend": "vite-node test-frontend/server.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

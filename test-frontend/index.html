@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Article Test Frontend</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f5f5f5;
+      line-height: 1.6;
+    }
+    h1 { margin-bottom: 30px; color: #333; }
+    .section {
+      background: white;
+      padding: 24px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: #555;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; margin-bottom: 6px; font-size: 14px; color: #666; }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      background: #0066ff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover { background: #0052cc; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .error {
+      color: #d32f2f;
+      background: #ffebee;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 16px;
+    }
+    .loading { color: #666; margin-top: 16px; }
+    .article { margin-top: 24px; padding-top: 24px; border-top: 2px solid #eee; }
+    .article-header { margin-bottom: 20px; }
+    .article-title { font-size: 24px; font-weight: 600; color: #222; margin-bottom: 8px; }
+    .article-subtitle { font-size: 16px; color: #666; margin-bottom: 12px; }
+    .article-meta {
+      font-size: 13px;
+      color: #888;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .article-meta span {
+      background: #f5f5f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    .article-content {
+      background: #fafafa;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      overflow-x: auto;
+    }
+    .article-list { list-style: none; }
+    .article-list li {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .article-list li:hover { background: #f5f5f5; }
+    .article-list li:last-child { border-bottom: none; }
+    .article-list-title { font-weight: 500; color: #333; margin-bottom: 4px; }
+    .article-list-meta { font-size: 12px; color: #888; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tab {
+      padding: 8px 16px;
+      background: #f0f0f0;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      color: #666;
+    }
+    .tab.active { background: #0066ff; color: white; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Article Test Frontend</h1>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="lookup">Lookup Article</button>
+    <button class="tab" data-tab="list">List Articles</button>
+  </div>
+
+  <div id="lookup-tab" class="section">
+    <h2>Lookup by Publication & Post ID</h2>
+    <div class="form-group">
+      <label>Publication ID</label>
+      <input type="text" id="pubId" placeholder="e.g., pub_01715eca-8680-4c80-8348-b34552fe2aaf">
+    </div>
+    <div class="form-group">
+      <label>Post ID</label>
+      <input type="text" id="postId" placeholder="e.g., post_abc123...">
+    </div>
+    <button id="lookupBtn">Load Article</button>
+    <div id="lookup-result"></div>
+  </div>
+
+  <div id="list-tab" class="section hidden">
+    <h2>Recent Articles</h2>
+    <div class="form-group">
+      <label>Limit</label>
+      <input type="text" id="limit" value="10" style="width: 100px;">
+      <button id="refreshBtn" style="margin-left: 10px;">Refresh</button>
+    </div>
+    <ul id="article-list" class="article-list"></ul>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.tab;
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#lookup-tab, #list-tab').forEach(t => t.classList.add('hidden'));
+        tab.classList.add('active');
+        document.getElementById(tabName + '-tab').classList.remove('hidden');
+        if (tabName === 'list') loadArticles();
+      });
+    });
+
+    // Lookup article
+    document.getElementById('lookupBtn').addEventListener('click', async () => {
+      const pubId = document.getElementById('pubId').value.trim();
+      const postId = document.getElementById('postId').value.trim();
+      const resultDiv = document.getElementById('lookup-result');
+
+      if (!pubId || !postId) {
+        resultDiv.textContent = 'Please enter both Publication ID and Post ID';
+        resultDiv.className = 'error';
+        return;
+      }
+
+      resultDiv.textContent = 'Loading...';
+      resultDiv.className = 'loading';
+
+      try {
+        const response = await fetch(`/api/articles/${encodeURIComponent(pubId)}/${encodeURIComponent(postId)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          resultDiv.textContent = 'Error: ' + (data.error || 'Unknown error');
+          resultDiv.className = 'error';
+          return;
+        }
+
+        displayArticle(data.article, resultDiv);
+      } catch (err) {
+        resultDiv.textContent = 'Error: ' + err.message;
+        resultDiv.className = 'error';
+      }
+    });
+
+    // Display article using safe DOM methods
+    function displayArticle(article, container) {
+      container.innerHTML = '';
+      container.className = 'article';
+
+      const date = article.publishDate
+        ? new Date(article.publishDate * 1000).toLocaleDateString()
+        : 'Unknown date';
+
+      // Header
+      const header = document.createElement('div');
+      header.className = 'article-header';
+
+      const title = document.createElement('div');
+      title.className = 'article-title';
+      title.textContent = article.title;
+      header.appendChild(title);
+
+      if (article.subtitle) {
+        const subtitle = document.createElement('div');
+        subtitle.className = 'article-subtitle';
+        subtitle.textContent = article.subtitle;
+        header.appendChild(subtitle);
+      }
+
+      const meta = document.createElement('div');
+      meta.className = 'article-meta';
+      meta.innerHTML = `
+        <span>📅 ${date}</span>
+        <span>✍️ ${(article.authors || ['Unknown']).join(', ')}</span>
+        <span>🏷️ ${(article.tags || ['No tags']).join(', ')}</span>
+        ${article.status ? `<span>📊 ${article.status}</span>` : ''}
+      `;
+      header.appendChild(meta);
+      container.appendChild(header);
+
+      // Content
+      if (article.content && article.content.length > 0) {
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'article-content';
+        contentDiv.innerHTML = article.content;
+        container.appendChild(contentDiv);
+      } else {
+        const noContent = document.createElement('div');
+        noContent.className = 'error';
+        noContent.textContent = 'No content available for this article';
+        container.appendChild(noContent);
+      }
+    }
+
+    // List articles
+    async function loadArticles() {
+      const listEl = document.getElementById('article-list');
+      const limit = document.getElementById('limit').value || 10;
+
+      listEl.innerHTML = '<li class="loading">Loading...</li>';
+
+      try {
+        const response = await fetch(`/api/articles?limit=${limit}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          listEl.innerHTML = '<li class="error">Error: ' + (data.error || 'Unknown error') + '</li>';
+          return;
+        }
+
+        if (!data.articles || data.articles.length === 0) {
+          listEl.innerHTML = '<li>No articles found</li>';
+          return;
+        }
+
+        listEl.innerHTML = '';
+        data.articles.forEach(article => {
+          const date = article.publishDate
+            ? new Date(article.publishDate * 1000).toLocaleDateString()
+            : 'Unknown';
+
+          const li = document.createElement('li');
+          li.addEventListener('click', () => {
+            document.getElementById('pubId').value = article.beehiivPublicationId;
+            document.getElementById('postId').value = article.beehiivPostId;
+            document.querySelector('[data-tab="lookup"]').click();
+            document.getElementById('lookupBtn').click();
+          });
+
+          li.innerHTML = `
+            <div class="article-list-title">${article.title}</div>
+            <div class="article-list-meta">
+              ${date} • ${(article.authors || ['Unknown author']).join(', ')}
+              ${article.content ? '• Has content' : '• No content'}
+            </div>
+          `;
+          listEl.appendChild(li);
+        });
+      } catch (err) {
+        listEl.innerHTML = '<li class="error">Error: ' + err.message + '</li>';
+      }
+    }
+
+    document.getElementById('refreshBtn').addEventListener('click', loadArticles);
+  </script>
+</body>
+</html>
