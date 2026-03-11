@@ -91,7 +91,7 @@
     .article-list li:last-child { border-bottom: none; }
     .article-list-title { font-weight: 500; color: #333; margin-bottom: 4px; }
     .article-list-meta { font-size: 12px; color: #888; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
     .tab {
       padding: 8px 16px;
       background: #f0f0f0;
@@ -102,6 +102,37 @@
     }
     .tab.active { background: #0066ff; color: white; }
     .hidden { display: none; }
+    .record-card {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .record-id {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .record-fields {
+      font-size: 14px;
+    }
+    .record-fields pre {
+      background: #fff;
+      padding: 12px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+    }
   </style>
 </head>
 <body>
@@ -110,6 +141,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="lookup">Lookup Article</button>
     <button class="tab" data-tab="list">List Articles</button>
+    <button class="tab" data-tab="softr">Softr API</button>
   </div>
 
   <div id="lookup-tab" class="section">
@@ -136,13 +168,44 @@
     <ul id="article-list" class="article-list"></ul>
   </div>
 
+  <div id="softr-tab" class="section hidden">
+    <h2>Softr API Test</h2>
+    <div class="form-group">
+      <label>Database ID (optional - uses env default)</label>
+      <input type="text" id="softrDbId" placeholder="e30d5c7a-db3d-4f2f-bfc5-8b8d27e9c5b7">
+    </div>
+    <div class="form-group">
+      <label>Table ID (optional - uses env default)</label>
+      <input type="text" id="softrTableId" placeholder="cYknrUjfXaL18R">
+    </div>
+    <div class="form-group">
+      <label>View ID (optional)</label>
+      <input type="text" id="softrViewId" placeholder="GJZ3uTU4j6QTSi">
+    </div>
+    <div class="form-group">
+      <label>Limit</label>
+      <input type="text" id="softrLimit" value="10" style="width: 100px;">
+    </div>
+    <div class="form-group">
+      <label>Offset</label>
+      <input type="text" id="softrOffset" value="0" style="width: 100px;">
+    </div>
+    <div class="form-group checkbox-group">
+      <input type="checkbox" id="softrFieldNames">
+      <label for="softrFieldNames" style="margin-bottom: 0;">Use field names (human-readable)</label>
+    </div>
+    <button id="softrBtn">Fetch Records</button>
+    <div id="softr-meta" style="margin-top: 16px; color: #666; font-size: 14px;"></div>
+    <div id="softr-result"></div>
+  </div>
+
   <script>
     // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('#lookup-tab, #list-tab').forEach(t => t.classList.add('hidden'));
+        document.querySelectorAll('#lookup-tab, #list-tab, #softr-tab').forEach(t => t.classList.add('hidden'));
         tab.classList.add('active');
         document.getElementById(tabName + '-tab').classList.remove('hidden');
         if (tabName === 'list') loadArticles();
@@ -281,6 +344,65 @@
     }
 
     document.getElementById('refreshBtn').addEventListener('click', loadArticles);
+
+    // Softr API Test
+    document.getElementById('softrBtn').addEventListener('click', async () => {
+      const dbId = document.getElementById('softrDbId').value.trim();
+      const tableId = document.getElementById('softrTableId').value.trim();
+      const viewId = document.getElementById('softrViewId').value.trim();
+      const limit = document.getElementById('softrLimit').value || '10';
+      const offset = document.getElementById('softrOffset').value || '0';
+      const fieldNames = document.getElementById('softrFieldNames').checked;
+      const resultDiv = document.getElementById('softr-result');
+      const metaDiv = document.getElementById('softr-meta');
+
+      resultDiv.innerHTML = '<div class="loading">Loading...</div>';
+      metaDiv.textContent = '';
+
+      try {
+        const params = new URLSearchParams();
+        if (dbId) params.append('databaseId', dbId);
+        if (tableId) params.append('tableId', tableId);
+        if (viewId) params.append('viewId', viewId);
+        params.append('limit', limit);
+        params.append('offset', offset);
+        if (fieldNames) params.append('fieldNames', 'true');
+
+        const response = await fetch(`/api/softr/records?${params}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          resultDiv.innerHTML = '<div class="error">Error: ' + (data.error || 'Unknown error') + '</div>';
+          return;
+        }
+
+        const records = data.records;
+        metaDiv.textContent = `Found ${records.data.length} records (total: ${records.metadata.total}, offset: ${records.metadata.offset}, limit: ${records.metadata.limit})`;
+
+        resultDiv.innerHTML = '';
+        records.data.forEach((record, index) => {
+          const card = document.createElement('div');
+          card.className = 'record-card';
+
+          const idDiv = document.createElement('div');
+          idDiv.className = 'record-id';
+          idDiv.textContent = '#' + (parseInt(offset) + index + 1) + ' • ID: ' + record.id;
+          card.appendChild(idDiv);
+
+          const fieldsDiv = document.createElement('div');
+          fieldsDiv.className = 'record-fields';
+
+          const pre = document.createElement('pre');
+          pre.textContent = JSON.stringify(record.fields, null, 2);
+          fieldsDiv.appendChild(pre);
+
+          card.appendChild(fieldsDiv);
+          resultDiv.appendChild(card);
+        });
+      } catch (err) {
+        resultDiv.innerHTML = '<div class="error">Error: ' + err.message + '</div>';
+      }
+    });
   </script>
 </body>
 </html>
