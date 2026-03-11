@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { getPostsByPublicationId, BeehiivPost } from "../integrations/beehiiv.js";
-import { createArticle, getArticleByPublicationIdAndPostId, updateArticleStatus, updateArticleContent, Article } from "../db/queries.js";
-import { generateText } from "../integrations/openai.js";
+import { createArticle, getArticleByPublicationIdAndPostId, updateArticleStatus, updateArticleContent } from "../db/queries.js";
+import { mapBeehiivPostToArticle } from "../mappers/article.js";
 
 const CRYPTO_PUB_ID = process.env.BEEHIIV_CRYPTO_PUB_ID;
 const INSTITUTIONAL_PUB_ID = process.env.BEEHIIV_INSTITUTIONAL_PUB_ID;
@@ -14,21 +14,6 @@ interface BackfillResult {
   updated: number;
   skipped: number;
   errors: number;
-}
-
-/**
- * Generate a summary of the article using OpenAI
- */
-async function generateArticleSummary(title: string, content: string): Promise<string> {
-  const prompt = `Title: ${title}\n\nContent: ${content.substring(0, 4000)}\n\nProvide a concise 2-3 sentence summary:`;
-
-  return generateText({
-    model: "gpt-4o-mini",
-    prompt,
-    systemMessage: "You are a helpful assistant that summarizes articles concisely.",
-    maxTokens: 150,
-    temperature: 0.5
-  });
 }
 
 /**
@@ -69,33 +54,11 @@ async function processPost(
       return;
     }
 
-    // // Generate summary if content exists
-    // let summary: string | undefined;
-    // if (post.content?.free?.web) {
-    //   try {
-    //     summary = await generateArticleSummary(post.title, post.content.free.web);
-    //   } catch (err) {
-    //     console.warn(`  Failed to generate summary for post ${post.id}:`, err);
-    //   }
-    // }
+    // Store new article using mapper
+    const articleInput = mapBeehiivPostToArticle(post, publicationId);
+    await createArticle(articleInput);
 
-    // Store in database
-    await createArticle({
-      beehiivPostId: post.id,
-      beehiivPublicationId: publicationId,
-      title: post.title,
-      subtitle: post.subtitle,
-      authors: post.authors,
-      publishDate: post.publish_date || post.created,
-      status: post.status,
-      tags: post.content_tags || [],
-      thumbnailUrl: post.thumbnail_url,
-      webUrl: post.web_url,
-      // summary,
-      content: post.free_web_content || post.content?.free?.web
-    });
-
-    console.log(`  Created article: ${post.title}`);
+    console.log(`  Created article: ${post.title} (${post.id})`);
     stats.created++;
   } catch (err) {
     console.error(`  Error processing post ${post.id}:`, err);

@@ -1,6 +1,7 @@
 import "dotenv/config";
-import { getPostByPublicationIdAndPostId, BeehiivPost } from "../integrations/beehiiv.js";
+import { getPostByPublicationIdAndPostId } from "../integrations/beehiiv.js";
 import { createArticle, Article } from "../db/queries.js";
+import { mapBeehiivPostToArticle } from "../mappers/article.js";
 import { generateText } from "../integrations/openai.js";
 
 /**
@@ -13,28 +14,16 @@ export async function processBeehiivPost(
   // 1. Fetch post from Beehiiv with content
   const post = await getPostByPublicationIdAndPostId(publicationId, postId, ["free_web_content"]);
 
-  // 2. Generate LLM summary if content exists
-  const content = post.free_web_content || post.content?.free?.web;
-  let summary: string | undefined;
-  if (content) {
-    summary = await generateArticleSummary(post.title, content);
+  // 2. Map to Article shape
+  const articleInput = mapBeehiivPostToArticle(post, publicationId);
+
+  // 3. Generate LLM summary if content exists
+  if (articleInput.content) {
+    articleInput.summary = await generateArticleSummary(articleInput.title, articleInput.content);
   }
 
-  // 3. Store article in database
-  const article = await createArticle({
-    beehiivPostId: post.id,
-    beehiivPublicationId: publicationId,
-    title: post.title,
-    subtitle: post.subtitle,
-    authors: post.authors,
-    publishDate: post.publish_date || post.created,
-    status: post.status,
-    tags: post.content_tags || [],
-    thumbnailUrl: post.thumbnail_url,
-    webUrl: post.web_url,
-    summary,
-    content: post.free_web_content || post.content?.free?.web
-  });
+  // 4. Store article in database
+  const article = await createArticle(articleInput);
 
   return article;
 }
