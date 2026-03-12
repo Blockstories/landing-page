@@ -1,5 +1,59 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { fetchArticles } from '../lib/api.js';
+
+const baseUrl = Astro.url.origin;
+const institutionalPubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
+const cryptoPubId = import.meta.env.BEEHIIV_CRYPTO_PUB_ID || "";
+const activeTab = Astro.url.searchParams.get("tab") || "institutional";
+
+const activePubId = activeTab === "crypto" ? cryptoPubId : institutionalPubId;
+
+let articles = [];
+let pagination = { hasMore: false };
+
+if (activePubId) {
+  try {
+    const result = await fetchArticles({ publicationId: activePubId, limit: 10, baseUrl });
+    articles = result.articles;
+    pagination = result.pagination;
+  } catch (error) {
+    console.error("Failed to fetch articles:", error);
+  }
+}
+
+function calculateReadTime(content?: string): number {
+  if (!content) return 0;
+  return Math.ceil(content.trim().split(/\s+/).length / 200);
+}
+
+function formatDate(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function formatTime(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleTimeString("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function getTagClass(tag: string): string {
+  const tagMap: Record<string, string> = {
+    "regulation": "regulation",
+    "markets": "markets",
+    "infrastructure": "infrastructure",
+    "institutional": "institutional",
+    "tokenization": "tokenization",
+    "stablecoins": "stablecoins",
+    "mica": "regulation"
+  };
+  return tagMap[tag.toLowerCase()] || "news";
+}
 ---
 
 <Layout title="News — Blockstories">
@@ -300,11 +354,8 @@ import Layout from '../layouts/Layout.astro';
       <input type="text" placeholder="Search news..." aria-label="Search news">
     </div>
     <div class="tabs" id="newsTabs">
-      <button class="tab on" data-f="all">All</button>
-      <button class="tab" data-f="tokenization">Tokenization &amp; Stablecoins</button>
-      <button class="tab" data-f="infrastructure">Infrastructure</button>
-      <button class="tab" data-f="regulation">Regulation</button>
-      <button class="tab" data-f="markets">Markets</button>
+      <a href="?tab=institutional" class={"tab " + (activeTab === "institutional" ? "on" : "")} data-f="institutional">Institutional</a>
+      <a href="?tab=crypto" class={"tab " + (activeTab === "crypto" ? "on" : "")} data-f="crypto">Crypto</a>
     </div>
   </div>
 
@@ -394,118 +445,50 @@ import Layout from '../layouts/Layout.astro';
     <!-- ═══ FEED ═══ -->
     <div class="feed">
 
-      <!-- TODAY -->
-      <div class="feed-group">
-        <div class="feed-group-label">Today</div>
+      {articles.length > 0 ? (
+        <div class="feed-group">
+          <div class="feed-group-label">Latest Articles</div>
 
-        <div class="ni rec" data-cat="regulation">
-          <div class="ni-meta"><div class="ni-time">15:58</div><div class="ni-src">Reuters</div><span class="rec-badge">Recommended Read</span></div>
-          <div class="ni-body">
-            <h3>ECB announces Phase 3 of digital euro pilot with 12 new participating banks</h3>
-            <p>Central bank expands CBDC initiative scope as settlement testing moves to public blockchain infrastructure.</p>
-            <div class="ni-tags"><span class="ni-tag">Regulation</span></div>
+          {articles.map((article, index) => (
+            <article class={"ni " + (index === 0 ? "rec" : "")} data-cat={article.tags.join(" ")}>
+              <div class="ni-meta">
+                <div class="ni-time">{formatTime(article.publishDate)}</div>
+                <div class="ni-src">{article.authors.map(a => a.name).join(" & ")}</div>
+                {index === 0 && <span class="rec-badge">Recommended Read</span>}
+              </div>
+              <div class="ni-body">
+                <h3>{article.title}</h3>
+                <p>{article.summary || ""}</p>
+                <div class="ni-tags">
+                  {article.tags.map(tag => (
+                    <span class="ni-tag">{tag}</span>
+                  ))}
+                </div>
+              </div>
+              {article.webUrl && (
+                <a href={article.webUrl} class="news-card-link" target="_blank" rel="noopener" style="display: block; margin-top: 8px; font-family: var(--mono); font-size: .55rem; color: var(--accent);">
+                  Read article · {calculateReadTime(article.content)}min
+                </a>
+              )}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="feed-group">
+          <div class="feed-group-label">No Articles</div>
+          <div class="ni">
+            <div class="ni-body">
+              <p>No articles available. Please check back later.</p>
+            </div>
           </div>
         </div>
+      )}
 
-        <div class="ni" data-cat="markets">
-          <div class="ni-meta"><div class="ni-time">15:14</div><div class="ni-src">Bloomberg</div></div>
-          <div class="ni-body">
-            <h3>BlackRock's BUIDL fund surpasses $2.8B AUM as institutional demand accelerates</h3>
-            <p>The tokenized money market fund is now the largest in the space, with European allocators driving 40% of recent inflows.</p>
-            <div class="ni-tags"><span class="ni-tag">Markets</span><span class="ni-tag">Tokenization</span></div>
-          </div>
+      {pagination.hasMore && (
+        <div class="load-more">
+          <button data-cursor={pagination.nextCursor}>Load More</button>
         </div>
-
-        <div class="ni" data-cat="infrastructure">
-          <div class="ni-meta"><div class="ni-time">14:28</div><div class="ni-src">Handelsblatt</div></div>
-          <div class="ni-body">
-            <h3>Commerzbank crypto subsidiary completes first cross-border institutional settlement</h3>
-            <p>Newly licensed entity processes EUR-denominated digital asset trade with Swiss counterparty using DLT-based infrastructure.</p>
-            <div class="ni-tags"><span class="ni-tag">Infrastructure</span></div>
-          </div>
-        </div>
-
-        <div class="ni" data-cat="regulation institutional">
-          <div class="ni-meta"><div class="ni-time">12:55</div><div class="ni-src">FT</div></div>
-          <div class="ni-body">
-            <h3>BaFin approves three new MiCA CASP applications in single batch</h3>
-            <p>German regulator signals streamlined approval process as European firms race to secure digital asset service provider licenses.</p>
-            <div class="ni-tags"><span class="ni-tag">Regulation</span><span class="ni-tag">MiCA</span></div>
-          </div>
-        </div>
-
-        <div class="ni" data-cat="markets">
-          <div class="ni-meta"><div class="ni-time">11:42</div><div class="ni-src">CoinDesk</div></div>
-          <div class="ni-body">
-            <h3>Tokenized US Treasury products reach $4.6B in total AUM — new all-time high</h3>
-            <p>Institutional demand for on-chain government bonds continues to accelerate across BlackRock, Franklin Templeton, and Ondo Finance.</p>
-            <div class="ni-tags"><span class="ni-tag">Markets</span><span class="ni-tag">Tokenization</span></div>
-          </div>
-        </div>
-
-        <div class="ni" data-cat="institutional infrastructure">
-          <div class="ni-meta"><div class="ni-time">10:58</div><div class="ni-src">The Block</div></div>
-          <div class="ni-body">
-            <h3>UBS launches pilot for tokenized structured product on Ethereum mainnet</h3>
-            <p>Swiss banking giant tests blockchain-native issuance of investment product for qualified institutional buyers.</p>
-            <div class="ni-tags"><span class="ni-tag">Institutional</span></div>
-          </div>
-        </div>
-
-        <div class="ni" data-cat="regulation">
-          <div class="ni-meta"><div class="ni-time">10:15</div><div class="ni-src">ECB</div></div>
-          <div class="ni-body">
-            <h3>ECB publishes updated framework for institutional digital asset reserve holdings</h3>
-            <p>New guidance outlines how eurozone banks can classify and report digital asset positions on balance sheets under revised Basel III rules.</p>
-            <div class="ni-tags"><span class="ni-tag">Regulation</span></div>
-          </div>
-        </div>
-
-        <div class="ni" data-cat="markets infrastructure">
-          <div class="ni-meta"><div class="ni-time">09:30</div><div class="ni-src">Börsen-Zeitung</div></div>
-          <div class="ni-body">
-            <h3>Deutsche Börse's D7 platform processes first fully digital bond issuance</h3>
-            <p>Germany's exchange operator completes end-to-end digital securities workflow on its DLT post-trade infrastructure.</p>
-            <div class="ni-tags"><span class="ni-tag">Infrastructure</span><span class="ni-tag">Markets</span></div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- YESTERDAY -->
-      <div class="feed-group">
-        <div class="feed-group-label">Yesterday</div>
-
-        <div class="ni" data-cat="institutional">
-          <div class="ni-meta"><div class="ni-time">17:20</div><div class="ni-src">Reuters</div></div>
-          <div class="ni-body">
-            <h3>SocGen Forge issues €100M in tokenized green bonds on public blockchain</h3>
-            <p>French banking group continues to expand its digital securities platform with ESG-focused institutional products.</p>
-            <div class="ni-tags"><span class="ni-tag">Institutional</span><span class="ni-tag">Tokenization</span></div>
-          </div>
-        </div>
-
-        <div class="ni" data-cat="regulation">
-          <div class="ni-meta"><div class="ni-time">14:45</div><div class="ni-src">Bloomberg</div></div>
-          <div class="ni-body">
-            <h3>Luxembourg's CSSF allows UCITS to allocate up to 10% of NAV to crypto via ETPs</h3>
-            <p>First major European fund domicile to enable regulated fund exposure to digital assets through eligible exchange-traded products.</p>
-            <div class="ni-tags"><span class="ni-tag">Regulation</span><span class="ni-tag">Funds</span></div>
-          </div>
-        </div>
-
-        <div class="ni" data-cat="markets">
-          <div class="ni-meta"><div class="ni-time">11:30</div><div class="ni-src">CoinDesk</div></div>
-          <div class="ni-body">
-            <h3>Circle launches EURC stablecoin institutional custody service with Bank Frick</h3>
-            <p>Euro-denominated stablecoin gains banking-grade custody option through Liechtenstein-based institution.</p>
-            <div class="ni-tags"><span class="ni-tag">Markets</span><span class="ni-tag">Stablecoins</span></div>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="load-more"><button>Load More</button></div>
+      )}
     </div>
 
     <!-- ═══ SIDEBAR ═══ -->
@@ -831,25 +814,12 @@ clocks();setInterval(clocks,30000);
 })();
 
 // ═══ News Tabs ═══
+// Tab switching is now handled by server-side navigation via query params
+// This script handles any client-side enhancements if needed
 const newsTabs=document.getElementById('newsTabs');
 if(newsTabs){
-  const items=document.querySelectorAll('.ni');
-  newsTabs.querySelectorAll('.tab').forEach(t=>{
-    t.addEventListener('click',()=>{
-      newsTabs.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
-      t.classList.add('on');
-      const f=t.dataset.f;
-      items.forEach(i=>{
-        const cats=(i.dataset.cat||'').split(' ');
-        if(f==='all') i.style.display='';
-        else i.style.display=cats.includes(f)?'':'none';
-      });
-      document.querySelectorAll('.feed-group').forEach(g=>{
-        const vis=[...g.querySelectorAll('.ni')].some(n=>n.style.display!=='none');
-        g.style.display=vis?'':'none';
-      });
-    });
-  });
+  // Optional: Add smooth transitions or client-side filtering if desired
+  // Currently tabs use full page navigation for server-side rendering
 }
 
 // ═══ Scroll Reveal ═══

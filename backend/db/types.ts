@@ -23,5 +23,6 @@ export interface Person {
   id: number;
   name: string;
   slug: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
+  company?: string | null;
 }

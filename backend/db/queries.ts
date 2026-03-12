@@ -9,7 +9,8 @@ export type { Article, Person, ArticleRole };
  */
 async function getPeopleForArticle(articleId: number): Promise<Array<{ person: Person; role: ArticleRole }>> {
   const result = await db.execute(
-    `SELECT p.*, ap.role FROM people p
+    `SELECT p.id, p.name, p.slug, p.image_url, p.company, ap.role
+     FROM people p
      JOIN article_people ap ON p.id = ap.person_id
      WHERE ap.article_id = ?`,
     [articleId]
@@ -262,8 +263,8 @@ export async function createPerson(
   person: Omit<Person, "id">
 ): Promise<Person> {
   await db.execute(
-    "INSERT INTO people (name, slug, image_url) VALUES (?, ?, ?)",
-    [person.name, person.slug, person.imageUrl ?? null]
+    "INSERT INTO people (name, slug, image_url, company) VALUES (?, ?, ?, ?)",
+    [person.name, person.slug, person.imageUrl ?? null, person.company ?? null]
   );
 
   const result = await db.execute(
@@ -290,4 +291,75 @@ export async function findOrCreatePerson(
   // Generate slug from name if not provided
   const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   return createPerson({ name, slug: finalSlug, imageUrl });
+}
+
+export interface Cursor {
+  ts: number;
+  id: number;
+}
+
+export interface ArticlesByPublicationResult {
+  articles: Article[];
+  hasMore: boolean;
+  nextCursor?: string;
+}
+
+/**
+ * Get articles by publication with cursor-based pagination
+ */
+export async function getArticlesByPublication(
+  publicationId: string,
+  limit: number,
+  cursor?: Cursor
+): Promise<ArticlesByPublicationResult> {
+  // Build query with optional cursor filter
+  let query = `SELECT * FROM articles WHERE beehiiv_publication_id = ?`;
+  const params: (string | number)[] = [publicationId];
+
+  if (cursor) {
+    query += ` AND (publish_date < ? OR (publish_date = ? AND id < ?))`;
+    params.push(cursor.ts, cursor.ts, cursor.id);
+  }
+
+  // Order by publish_date DESC, then id DESC for stable pagination
+  // Fetch one extra to determine if there are more results
+  query += ` ORDER BY publish_date DESC, id DESC LIMIT ?`;
+  params.push(limit + 1);
+
+  const result = await db.execute(query, params);
+  const rows = result.rows;
+
+  // Check if there are more results
+  const hasMore = rows.length > limit;
+
+  // Remove the extra row if we fetched one
+  const articleRows = hasMore ? rows.slice(0, limit) : rows;
+
+  // Map rows to articles
+  const articles = articleRows.map(mapRowToArticle);
+
+  // Fetch people for each article
+  const articlesWithPeople = await Promise.all(
+    articles.map(async (article) => {
+      const people = await getPeopleForArticle(article.id);
+      return combineArticleWithPeople(article, people);
+    })
+  );
+
+  // Generate next cursor if there are more results
+  let nextCursor: string | undefined;
+  if (hasMore && articlesWithPeople.length > 0) {
+    const lastArticle = articlesWithPeople[articlesWithPeople.length - 1];
+    const cursorData: Cursor = {
+      ts: lastArticle.publishDate,
+      id: lastArticle.id
+    };
+    nextCursor = Buffer.from(JSON.stringify(cursorData)).toString("base64");
+  }
+
+  return {
+    articles: articlesWithPeople,
+    hasMore,
+    nextCursor
+  };
 }

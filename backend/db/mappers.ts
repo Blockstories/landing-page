@@ -30,6 +30,7 @@ export function mapRowToPerson(row: Row): Person {
     name: row.name as string,
     slug: row.slug as string,
     imageUrl: row.image_url as string | undefined ?? undefined,
+    company: (row.company as string | null) ?? null,
   };
 }
 
