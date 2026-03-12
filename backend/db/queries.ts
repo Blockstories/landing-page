@@ -9,7 +9,8 @@ export type { Article, Person, ArticleRole };
  */
 async function getPeopleForArticle(articleId: number): Promise<Array<{ person: Person; role: ArticleRole }>> {
   const result = await db.execute(
-    `SELECT p.*, ap.role FROM people p
+    `SELECT p.id, p.name, p.slug, p.image_url, p.company, ap.role
+     FROM people p
      JOIN article_people ap ON p.id = ap.person_id
      WHERE ap.article_id = ?`,
     [articleId]
@@ -260,8 +261,8 @@ export async function createPerson(
   person: Omit<Person, "id">
 ): Promise<Person> {
   await db.execute(
-    "INSERT INTO people (name, slug, image_url) VALUES (?, ?, ?)",
-    [person.name, person.slug, person.imageUrl ?? null]
+    "INSERT INTO people (name, slug, image_url, company) VALUES (?, ?, ?, ?)",
+    [person.name, person.slug, person.imageUrl ?? null, person.company ?? null]
   );
 
   const result = await db.execute(
