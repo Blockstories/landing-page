@@ -1,4 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Mock the database client before importing queries (which imports client)
+vi.mock("../../../../backend/db/client.js", () => ({
+  db: {
+    execute: vi.fn()
+  }
+}));
+
 import { GET } from "./articles.js";
 import * as queries from "../../../../backend/db/queries.js";
 
