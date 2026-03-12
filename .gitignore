@@ -151,3 +151,4 @@ dist/
 
 # Old HTML export files (now in frontend/ but not tracked)
 frontend/public/
+.worktrees/
