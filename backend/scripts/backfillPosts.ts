@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { getPostsByPublicationId, BeehiivPost } from "../integrations/beehiiv.js";
-import { createArticle, getArticleByPublicationIdAndPostId, updateArticleStatus, updateArticleContent } from "../db/queries.js";
+import { createArticle, getArticleByPublicationIdAndPostId, updateArticleStatus, updateArticleContent, findOrCreatePerson } from "../db/queries.js";
 import { mapBeehiivPostToArticle } from "../mappers/article.js";
 
 const CRYPTO_PUB_ID = process.env.BEEHIIV_CRYPTO_PUB_ID;
@@ -56,7 +56,20 @@ async function processPost(
 
     // Store new article using mapper
     const articleInput = mapBeehiivPostToArticle(post, publicationId);
-    await createArticle(articleInput);
+
+    // Resolve author names to Person objects
+    const authorPeople = await Promise.all(
+      articleInput.authorNames.map(name => findOrCreatePerson(name))
+    );
+
+    await createArticle(
+      {
+        ...articleInput,
+        authors: [], // Will be populated via relations
+        featured: [],
+      },
+      authorPeople.map(p => ({ personId: p.id, role: "author" }))
+    );
 
     console.log(`  Created article: ${post.title} (${post.id})`);
     stats.created++;

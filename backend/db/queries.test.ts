@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getNewestArticles, getArticleByPublicationIdAndPostId, createArticle } from "./queries.js";
-import { Article } from "./types.js";
+import { Article, Person } from "./types.js";
 
 // Mock the db client
 vi.mock("./client.js", () => ({
@@ -12,6 +12,13 @@ vi.mock("./client.js", () => ({
 import { db } from "./client.js";
 
 const mockExecute = vi.mocked(db.execute);
+
+// Helper to mock empty people results for articles
+function mockEmptyPeopleForArticles(articleIds: number[]) {
+  for (const _ of articleIds) {
+    mockExecute.mockResolvedValueOnce({ rows: [] } as any);
+  }
+}
 
 describe("getNewestArticles", () => {
   beforeEach(() => {
@@ -26,7 +33,6 @@ describe("getNewestArticles", () => {
         beehiiv_publication_id: "pub_1",
         title: "Article 1",
         subtitle: "Subtitle 1",
-        authors: "[\"Author 1\"]",
         publish_date: 1700000000,
         status: "confirmed",
         tags: "[\"tag1\"]",
@@ -41,7 +47,6 @@ describe("getNewestArticles", () => {
         beehiiv_publication_id: "pub_1",
         title: "Article 2",
         subtitle: null,
-        authors: "[]",
         publish_date: 1699999999,
         status: "draft",
         tags: "[]",
@@ -53,6 +58,7 @@ describe("getNewestArticles", () => {
     ];
 
     mockExecute.mockResolvedValueOnce({ rows: mockRows } as any);
+    mockEmptyPeopleForArticles([1, 2]);
 
     const result = await getNewestArticles(10);
 
@@ -63,6 +69,8 @@ describe("getNewestArticles", () => {
     expect(result).toHaveLength(2);
     expect(result[0].title).toBe("Article 1");
     expect(result[1].title).toBe("Article 2");
+    expect(result[0].authors).toEqual([]);
+    expect(result[0].featured).toEqual([]);
   });
 
   it("should use default limit of 10 when not specified", async () => {
@@ -97,7 +105,6 @@ describe("getArticleByPublicationIdAndPostId", () => {
       beehiiv_publication_id: "pub_456",
       title: "Found Article",
       subtitle: "Subtitle",
-      authors: "[\"Author\"]",
       publish_date: 1700000000,
       status: "confirmed",
       tags: "[\"tag\"]",
@@ -107,7 +114,9 @@ describe("getArticleByPublicationIdAndPostId", () => {
       content: "Content"
     };
 
-    mockExecute.mockResolvedValueOnce({ rows: [mockRow] } as any);
+    mockExecute
+      .mockResolvedValueOnce({ rows: [mockRow] } as any)
+      .mockResolvedValueOnce({ rows: [] } as any);
 
     const result = await getArticleByPublicationIdAndPostId("pub_456", "post_123");
 
@@ -118,6 +127,8 @@ describe("getArticleByPublicationIdAndPostId", () => {
     expect(result).not.toBeNull();
     expect(result?.title).toBe("Found Article");
     expect(result?.beehiivPostId).toBe("post_123");
+    expect(result?.authors).toEqual([]);
+    expect(result?.featured).toEqual([]);
   });
 
   it("should return null when article not found", async () => {
@@ -135,12 +146,18 @@ describe("createArticle", () => {
   });
 
   it("should insert article and return the created article", async () => {
+    const authors: Person[] = [
+      { id: 1, name: "Author A", slug: "author-a" },
+      { id: 2, name: "Author B", slug: "author-b" }
+    ];
+
     const newArticle: Omit<Article, "id"> = {
       beehiivPostId: "post_new",
       beehiivPublicationId: "pub_new",
       title: "New Article",
       subtitle: "New Subtitle",
-      authors: ["Author A", "Author B"],
+      authors: authors,
+      featured: [],
       publishDate: 1700000000,
       status: "confirmed",
       tags: ["crypto", "news"],
@@ -156,7 +173,6 @@ describe("createArticle", () => {
       beehiiv_publication_id: "pub_new",
       title: "New Article",
       subtitle: "New Subtitle",
-      authors: "[\"Author A\", \"Author B\"]",
       publish_date: 1700000000,
       status: "confirmed",
       tags: "[\"crypto\", \"news\"]",
@@ -166,33 +182,26 @@ describe("createArticle", () => {
       content: "<p>New content</p>"
     };
 
+    mockExecute.mockReset();
     mockExecute
-      .mockResolvedValueOnce({ rows: [] } as any)
-      .mockResolvedValueOnce({ rows: [mockInsertedRow] } as any);
+      .mockResolvedValueOnce({ rows: [] } as any)  // 1. INSERT article
+      .mockResolvedValueOnce({ rows: [mockInsertedRow] } as any)  // 2. SELECT by pub/post (getArticleByPublicationIdAndPostId)
+      .mockResolvedValueOnce({ rows: [] } as any)  // 3. SELECT people (getPeopleForArticle called by getArticleByPublicationIdAndPostId)
+      .mockResolvedValueOnce({ rows: [] } as any)  // 4. INSERT author 1
+      .mockResolvedValueOnce({ rows: [] } as any)  // 5. INSERT author 2
+      .mockResolvedValueOnce({ rows: [mockInsertedRow] } as any)  // 6. SELECT by id (getArticleById)
+      .mockResolvedValueOnce({ rows: [] } as any); // 7. SELECT people (getPeopleForArticle called by getArticleById)
 
-    const result = await createArticle(newArticle);
+    const result = await createArticle(newArticle, [
+      { personId: 1, role: "author" },
+      { personId: 2, role: "author" }
+    ]);
 
-    expect(mockExecute).toHaveBeenCalledTimes(2);
-    expect(mockExecute).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining("INSERT INTO articles"),
-      [
-        "post_new",
-        "pub_new",
-        "New Article",
-        "New Subtitle",
-        JSON.stringify(["Author A", "Author B"]),
-        1700000000,
-        "confirmed",
-        JSON.stringify(["crypto", "news"]),
-        "https://example.com/new.jpg",
-        "https://example.com/new",
-        "New summary",
-        "<p>New content</p>"
-      ]
-    );
+    expect(mockExecute).toHaveBeenCalledTimes(7);
     expect(result.id).toBe(100);
     expect(result.title).toBe("New Article");
+    expect(result.authors).toEqual([]);
+    expect(result.featured).toEqual([]);
   });
 
   it("should throw error when article retrieval fails after insert", async () => {
@@ -201,6 +210,7 @@ describe("createArticle", () => {
       beehiivPublicationId: "pub_fail",
       title: "Fail Article",
       authors: [],
+      featured: [],
       publishDate: 1700000000,
       status: "draft",
       tags: []

@@ -1,11 +1,28 @@
 import { db } from "./client.js";
-import type { Article, Person } from "./types.js";
-import { mapRowToArticle, mapRowToPerson } from "./mappers.js";
+import type { Article, Person, ArticleRole } from "./types.js";
+import { mapRowToArticle, mapRowToPerson, combineArticleWithPeople } from "./mappers.js";
 
-export type { Article, Person };
+export type { Article, Person, ArticleRole };
 
 /**
- * Get newest articles
+ * Fetch people for an article
+ */
+async function getPeopleForArticle(articleId: number): Promise<Array<{ person: Person; role: ArticleRole }>> {
+  const result = await db.execute(
+    `SELECT p.*, ap.role FROM people p
+     JOIN article_people ap ON p.id = ap.person_id
+     WHERE ap.article_id = ?`,
+    [articleId]
+  );
+
+  return result.rows.map((row) => ({
+    person: mapRowToPerson(row),
+    role: row.role as ArticleRole,
+  }));
+}
+
+/**
+ * Get newest articles with their people
  */
 export async function getNewestArticles(count: number = 10): Promise<Article[]> {
   const result = await db.execute(
@@ -13,7 +30,17 @@ export async function getNewestArticles(count: number = 10): Promise<Article[]> 
     [count]
   );
 
-  return result.rows.map(mapRowToArticle);
+  const articles = result.rows.map(mapRowToArticle);
+
+  // Fetch people for each article
+  const articlesWithPeople = await Promise.all(
+    articles.map(async (article) => {
+      const people = await getPeopleForArticle(article.id);
+      return combineArticleWithPeople(article, people);
+    })
+  );
+
+  return articlesWithPeople;
 }
 
 /**
@@ -29,23 +56,47 @@ export async function getArticleByPublicationIdAndPostId(
   );
 
   const row = result.rows[0];
-  return row ? mapRowToArticle(row) : null;
+  if (!row) return null;
+
+  const article = mapRowToArticle(row);
+  const people = await getPeopleForArticle(article.id);
+  return combineArticleWithPeople(article, people);
 }
 
 /**
- * Create a new article
+ * Get single article by ID
  */
-export async function createArticle(article: Omit<Article, "id">): Promise<Article> {
+export async function getArticleById(id: number): Promise<Article | null> {
+  const result = await db.execute(
+    "SELECT * FROM articles WHERE id = ?",
+    [id]
+  );
+
+  const row = result.rows[0];
+  if (!row) return null;
+
+  const article = mapRowToArticle(row);
+  const people = await getPeopleForArticle(article.id);
+  return combineArticleWithPeople(article, people);
+}
+
+/**
+ * Create a new article with people relations
+ */
+export async function createArticle(
+  article: Omit<Article, "id">,
+  people: Array<{ personId: number; role: ArticleRole }> = []
+): Promise<Article> {
+  // Insert article
   await db.execute(
     `INSERT INTO articles
-      (beehiiv_post_id, beehiiv_publication_id, title, subtitle, authors, publish_date, status, tags, thumbnail_url, web_url, summary, content)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (beehiiv_post_id, beehiiv_publication_id, title, subtitle, publish_date, status, tags, thumbnail_url, web_url, summary, content)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       article.beehiivPostId,
       article.beehiivPublicationId,
       article.title,
       article.subtitle ?? null,
-      JSON.stringify(article.authors),
       article.publishDate,
       article.status,
       JSON.stringify(article.tags),
@@ -56,10 +107,22 @@ export async function createArticle(article: Omit<Article, "id">): Promise<Artic
     ]
   );
 
-  // Return the newly created article
+  // Get the newly created article
   const saved = await getArticleByPublicationIdAndPostId(article.beehiivPublicationId, article.beehiivPostId);
   if (!saved) throw new Error("Failed to retrieve newly inserted article");
-  return saved;
+
+  // Insert people relations
+  if (people.length > 0) {
+    for (const { personId, role } of people) {
+      await db.execute(
+        "INSERT INTO article_people (article_id, person_id, role) VALUES (?, ?, ?)",
+        [saved.id, personId, role]
+      );
+    }
+  }
+
+  // Return article with people
+  return getArticleById(saved.id) as Promise<Article>;
 }
 
 /**
@@ -91,6 +154,67 @@ export async function updateArticleContent(
 }
 
 /**
+ * Add person to article
+ */
+export async function addPersonToArticle(
+  articleId: number,
+  personId: number,
+  role: ArticleRole
+): Promise<void> {
+  await db.execute(
+    "INSERT OR IGNORE INTO article_people (article_id, person_id, role) VALUES (?, ?, ?)",
+    [articleId, personId, role]
+  );
+}
+
+/**
+ * Remove person from article
+ */
+export async function removePersonFromArticle(
+  articleId: number,
+  personId: number,
+  role: ArticleRole
+): Promise<void> {
+  await db.execute(
+    "DELETE FROM article_people WHERE article_id = ? AND person_id = ? AND role = ?",
+    [articleId, personId, role]
+  );
+}
+
+/**
+ * Get articles by person (as author or featured)
+ */
+export async function getArticlesByPerson(
+  personId: number,
+  role?: ArticleRole
+): Promise<Article[]> {
+  let query = `SELECT a.* FROM articles a
+               JOIN article_people ap ON a.id = ap.article_id
+               WHERE ap.person_id = ?`;
+  const params: (number | string)[] = [personId];
+
+  if (role) {
+    query += " AND ap.role = ?";
+    params.push(role);
+  }
+
+  query += " ORDER BY a.publish_date DESC";
+
+  const result = await db.execute(query, params);
+  const articles = result.rows.map(mapRowToArticle);
+
+  // Fetch people for each article
+  const articlesWithPeople = await Promise.all(
+    articles.map(async (article) => {
+      const people = await getPeopleForArticle(article.id);
+      return combineArticleWithPeople(article, people);
+    })
+  );
+
+  return articlesWithPeople;
+}
+
+/**
  * Get person by slug
  */
 export async function getPersonBySlug(slug: string): Promise<Person | null> {
@@ -114,4 +238,41 @@ export async function getPersonByName(name: string): Promise<Person | null> {
 
   const row = result.rows[0];
   return row ? mapRowToPerson(row) : null;
+}
+
+/**
+ * Create a new person
+ */
+export async function createPerson(
+  person: Omit<Person, "id">
+): Promise<Person> {
+  await db.execute(
+    "INSERT INTO people (name, slug, image_url) VALUES (?, ?, ?)",
+    [person.name, person.slug, person.imageUrl ?? null]
+  );
+
+  const result = await db.execute(
+    "SELECT * FROM people WHERE slug = ?",
+    [person.slug]
+  );
+
+  const row = result.rows[0];
+  if (!row) throw new Error("Failed to retrieve newly inserted person");
+  return mapRowToPerson(row);
+}
+
+/**
+ * Find or create person by name
+ */
+export async function findOrCreatePerson(
+  name: string,
+  slug?: string,
+  imageUrl?: string
+): Promise<Person> {
+  const existing = await getPersonByName(name);
+  if (existing) return existing;
+
+  // Generate slug from name if not provided
+  const finalSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return createPerson({ name, slug: finalSlug, imageUrl });
 }

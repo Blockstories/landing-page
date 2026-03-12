@@ -4,14 +4,13 @@ import { mapRowToArticle } from "../db/mappers.js";
 import { BeehiivPost } from "../integrations/beehiiv.js";
 
 describe("mapRowToArticle", () => {
-  it("should map a complete database row to an Article object", () => {
+  it("should map a complete database row to an Article base object", () => {
     const row = {
       id: 1,
       beehiiv_post_id: "post_123",
       beehiiv_publication_id: "pub_456",
       title: "Test Article",
       subtitle: "Test Subtitle",
-      authors: '["Author One", "Author Two"]',
       publish_date: 1699999999,
       status: "confirmed",
       tags: '["tag1", "tag2"]',
@@ -29,7 +28,6 @@ describe("mapRowToArticle", () => {
       beehiivPublicationId: "pub_456",
       title: "Test Article",
       subtitle: "Test Subtitle",
-      authors: ["Author One", "Author Two"],
       publishDate: 1699999999,
       status: "confirmed",
       tags: ["tag1", "tag2"],
@@ -47,7 +45,6 @@ describe("mapRowToArticle", () => {
       beehiiv_publication_id: "pub_000",
       title: "Minimal Article",
       subtitle: null,
-      authors: null,
       publish_date: 1700000000,
       status: "draft",
       tags: null,
@@ -65,7 +62,6 @@ describe("mapRowToArticle", () => {
       beehiivPublicationId: "pub_000",
       title: "Minimal Article",
       subtitle: undefined,
-      authors: [],
       publishDate: 1700000000,
       status: "draft",
       tags: [],
@@ -76,14 +72,13 @@ describe("mapRowToArticle", () => {
     });
   });
 
-  it("should parse empty JSON arrays for authors and tags", () => {
+  it("should parse empty JSON arrays for tags", () => {
     const row = {
       id: 3,
       beehiiv_post_id: "post_abc",
       beehiiv_publication_id: "pub_def",
       title: "Empty Arrays Article",
       subtitle: "",
-      authors: "[]",
       publish_date: 1700000001,
       status: "scheduled",
       tags: "[]",
@@ -95,7 +90,6 @@ describe("mapRowToArticle", () => {
 
     const result = mapRowToArticle(row);
 
-    expect(result.authors).toEqual([]);
     expect(result.tags).toEqual([]);
   });
 });
@@ -131,7 +125,7 @@ describe("mapBeehiivPostToArticle", () => {
       beehiivPublicationId: "pub_456",
       title: "Test Article",
       subtitle: "Test Subtitle",
-      authors: ["Author One", "Author Two"],
+      authorNames: ["Author One", "Author Two"],
       publishDate: 1699999999,
       status: "confirmed",
       tags: ["tag1", "tag2"],

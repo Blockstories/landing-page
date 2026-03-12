@@ -1,5 +1,6 @@
 // /db/types.ts
 export type ArticleStatus = "draft" | "confirmed" | "scheduled" | "archived";
+export type ArticleRole = "author" | "featured";
 
 export interface Article {
   id: number;
@@ -7,7 +8,8 @@ export interface Article {
   beehiivPublicationId: string;
   title: string;
   subtitle?: string;
-  authors: string[];
+  authors: Person[];
+  featured: Person[];
   publishDate: number;
   status: ArticleStatus;
   tags: string[];

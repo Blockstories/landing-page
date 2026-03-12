@@ -1,17 +1,16 @@
 import type { Row } from "@libsql/client";
-import type { Article, Person } from "./types.js";
+import type { Article, Person, ArticleRole } from "./types.js";
 
 /**
- * Map database row to Article object
+ * Map database row to Article object (without people - attach separately)
  */
-export function mapRowToArticle(row: Row): Article {
+export function mapRowToArticle(row: Row): Omit<Article, "authors" | "featured"> {
   return {
     id: row.id as number,
     beehiivPostId: row.beehiiv_post_id as string,
     beehiivPublicationId: row.beehiiv_publication_id as string,
     title: row.title as string,
     subtitle: row.subtitle as string | undefined ?? undefined,
-    authors: row.authors ? JSON.parse(row.authors as string) : [],
     publishDate: row.publish_date as number,
     status: row.status as Article["status"],
     tags: row.tags ? JSON.parse(row.tags as string) : [],
@@ -31,5 +30,19 @@ export function mapRowToPerson(row: Row): Person {
     name: row.name as string,
     slug: row.slug as string,
     imageUrl: row.image_url as string | undefined ?? undefined,
+  };
+}
+
+/**
+ * Combine article data with authors and featured people
+ */
+export function combineArticleWithPeople(
+  article: Omit<Article, "authors" | "featured">,
+  people: Array<{ person: Person; role: ArticleRole }>
+): Article {
+  return {
+    ...article,
+    authors: people.filter((p) => p.role === "author").map((p) => p.person),
+    featured: people.filter((p) => p.role === "featured").map((p) => p.person),
   };
 }

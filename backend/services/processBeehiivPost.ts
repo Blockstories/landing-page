@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { getPostByPublicationIdAndPostId } from "../integrations/beehiiv.js";
-import { createArticle, Article } from "../db/queries.js";
+import { createArticle, findOrCreatePerson, Article } from "../db/queries.js";
 import { mapBeehiivPostToArticle } from "../mappers/article.js";
 import { generateText } from "../integrations/openai.js";
 
@@ -17,13 +17,27 @@ export async function processBeehiivPost(
   // 2. Map to Article shape
   const articleInput = mapBeehiivPostToArticle(post, publicationId);
 
-  // 3. Generate LLM summary if content exists
+  // 3. Resolve author names to Person objects
+  const authorPeople = await Promise.all(
+    articleInput.authorNames.map(name => findOrCreatePerson(name))
+  );
+
+  // 4. Generate LLM summary if content exists
+  let summary: string | undefined;
   if (articleInput.content) {
-    articleInput.summary = await generateArticleSummary(articleInput.title, articleInput.content);
+    summary = await generateArticleSummary(articleInput.title, articleInput.content);
   }
 
-  // 4. Store article in database
-  const article = await createArticle(articleInput);
+  // 5. Store article in database with people relations
+  const article = await createArticle(
+    {
+      ...articleInput,
+      authors: [], // Will be populated via relations
+      featured: [],
+      summary,
+    },
+    authorPeople.map(p => ({ personId: p.id, role: "author" }))
+  );
 
   return article;
 }

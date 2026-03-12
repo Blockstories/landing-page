@@ -2,12 +2,31 @@ import { Article } from "../db/types.js";
 import { BeehiivPost } from "../integrations/beehiiv.js";
 
 /**
- * Map Beehiiv API post to Article object
+ * Result of mapping Beehiiv post to article input
+ */
+export interface ArticleInput {
+  beehiivPostId: string;
+  beehiivPublicationId: string;
+  title: string;
+  subtitle?: string;
+  authorNames: string[];
+  publishDate: number;
+  status: Article["status"];
+  tags: string[];
+  thumbnailUrl?: string;
+  webUrl?: string;
+  summary?: string;
+  content?: string;
+}
+
+/**
+ * Map Beehiiv API post to Article input
+ * Note: author names are returned separately - resolve to Person objects before storing
  */
 export function mapBeehiivPostToArticle(
   post: BeehiivPost,
   publicationId: string
-): Omit<Article, "id"> {
+): ArticleInput {
   const content = post.free_web_content || post.content?.free?.web;
 
   return {
@@ -15,7 +34,7 @@ export function mapBeehiivPostToArticle(
     beehiivPublicationId: publicationId,
     title: post.title,
     subtitle: post.subtitle || undefined,
-    authors: post.authors || [],
+    authorNames: post.authors || [],
     publishDate: post.publish_date || post.created,
     status: post.status,
     tags: post.content_tags || [],
