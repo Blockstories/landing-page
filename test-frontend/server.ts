@@ -1,8 +1,8 @@
 import "dotenv/config";
 import { createServer, IncomingMessage, ServerResponse } from "http";
-import { getArticleByPublicationIdAndPostId, getNewestArticles } from "../db/queries.js";
-import { getRecordsWithMappedFields, getRecordsRaw } from "../services/softrService.js";
-import { summarizeArticle } from "../services/openaiService.js";
+import { getArticleByPublicationIdAndPostId, getNewestArticles } from "../backend/db/queries.js";
+import { getRecordsWithMappedFields, getRecordsRaw, getRecords } from "../backend/services/softrService.js";
+import { summarizeArticle } from "../backend/services/openaiService.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
