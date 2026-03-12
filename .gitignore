@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 # Astro
 .astro/
 dist/
+
+# Old HTML export files (now in frontend/ but not tracked)
+frontend/public/
