@@ -146,5 +146,8 @@ vite.config.ts.timestamp-*
 .astro/
 dist/
 
+# Git worktrees
+.worktrees/
+
 # Old HTML export files (now in frontend/ but not tracked)
 frontend/public/
