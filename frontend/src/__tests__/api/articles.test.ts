@@ -7,7 +7,7 @@ vi.mock("../../../../backend/db/client.js", () => ({
   }
 }));
 
-import { GET } from "./articles.js";
+import { GET } from "../../pages/api/articles.js";
 import * as queries from "../../../../backend/db/queries.js";
 
 // Mock dependencies

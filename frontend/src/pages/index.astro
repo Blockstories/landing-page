@@ -1,5 +1,57 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { fetchArticles } from '../lib/api.js';
+
+const institutionalPubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
+const cryptoPubId = import.meta.env.BEEHIIV_CRYPTO_PUB_ID || "";
+
+let institutionalBriefing = null;
+let cryptoBriefing = null;
+
+// Only fetch data during SSR (not during static build)
+const isBuildTime = import.meta.env.MODE === "production" && !import.meta.env.SSR;
+
+if (!isBuildTime) {
+  const baseUrl = Astro.url.origin;
+
+  if (institutionalPubId) {
+    try {
+      const result = await fetchArticles({ publicationId: institutionalPubId, limit: 1, baseUrl });
+      institutionalBriefing = result.articles[0] || null;
+    } catch (error) {
+      console.error("Failed to fetch institutional briefing:", error);
+    }
+  }
+
+  if (cryptoPubId) {
+    try {
+      const result = await fetchArticles({ publicationId: cryptoPubId, limit: 1, baseUrl });
+      cryptoBriefing = result.articles[0] || null;
+    } catch (error) {
+      console.error("Failed to fetch crypto briefing:", error);
+    }
+  }
+}
+
+function calculateReadTime(content?: string): number {
+  if (!content) return 0;
+  return Math.ceil(content.trim().split(/\s+/).length / 200);
+}
+
+function formatDate(timestamp: number): string {
+  return new Date(timestamp * 1000).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function getAuthorRole(index: number, pubId: string): string {
+  if (index !== 0) return "Contributor";
+  if (pubId === institutionalPubId) return "Lead Institutional Research";
+  if (pubId === cryptoPubId) return "Lead Crypto Research";
+  return "Contributor";
+}
 ---
 
 <Layout title="Blockstories — Institutional Digital Asset Intelligence" lang="de">
@@ -704,125 +756,148 @@ import Layout from '../layouts/Layout.astro';
   </div>
 
   <!-- Institutional Briefing -->
+  {institutionalBriefing ? (
   <div class="briefing-card reveal" data-briefing="institutional">
     <div class="briefing-band">
       <div class="briefing-band-text">
-        <div class="briefing-tag">Institutional Briefing · Feb 26, 2026</div>
-        <h2>Is it a fund? Money? Or is it both?</h2>
-        <div class="briefing-meta">By Louis Tellier &amp; Maximilian Vargas · 10min structured read</div>
+        <div class="briefing-tag">Institutional Briefing · {formatDate(institutionalBriefing.publishDate)}</div>
+        <h2>{institutionalBriefing.title}</h2>
+        <div class="briefing-meta">By {institutionalBriefing.authors.map(a => a.name).join(" & ")} · {calculateReadTime(institutionalBriefing.content)}min structured read</div>
       </div>
       <div class="briefing-band-vis">
         <div class="briefing-authors">
+          {institutionalBriefing.authors.map((author, idx) => (
           <div>
-            <img class="briefing-avatar" src="Louis Tellier_new.jpg" alt="Louis Tellier">
-            <div class="briefing-author-info"><div class="briefing-author-name">Louis Tellier</div><div class="briefing-author-role">Lead Institutional Research</div></div>
+            {author.imageUrl ? (
+              <img class="briefing-avatar" src={author.imageUrl} alt={author.name}>
+            ) : (
+              <div class="briefing-avatar briefing-avatar-init">{author.name.split(" ").map(n => n[0]).join("")}</div>
+            )}
+            <div class="briefing-author-info"><div class="briefing-author-name">{author.name}</div><div class="briefing-author-role">{getAuthorRole(idx, institutionalBriefing.beehiivPublicationId)}</div></div>
           </div>
-          <div>
-            <img class="briefing-avatar" src="Maximilian Vargas.jpg" alt="Maximilian Vargas">
-            <div class="briefing-author-info"><div class="briefing-author-name">Maximilian Vargas</div><div class="briefing-author-role">Founder</div></div>
-          </div>
+          ))}
         </div>
         <span class="briefing-label-corner">Institutional Briefing</span>
       </div>
     </div>
+    {institutionalBriefing.summary && (
     <div class="briefing-summary-section">
       <div class="briefing-summary-label">Also in this edition</div>
       <ul class="briefing-summary">
-        <li>Luxembourg's CSSF allows UCITS to allocate up to <strong>10% of NAV to crypto</strong> via eligible ETPs — a first for a major European fund domicile</li>
-        <li>Why tokenized money market funds are <strong>blurring the line with stablecoins</strong> — and what that means for institutional demand</li>
-        <li>Interviews with <strong>CoinShares, VanEck, Allfunds Blockchain</strong> and Woud Law on the CSSF decision</li>
+        {institutionalBriefing.summary.split("\n").filter(line => line.trim()).map(line => (
+          <li>{line}</li>
+        ))}
       </ul>
     </div>
+    )}
+    {institutionalBriefing.featured.length > 0 && (
     <div class="briefing-featured">
       <span class="briefing-featured-label">Experts featured:</span>
       <div class="briefing-featured-row">
+        {institutionalBriefing.featured.map(person => (
         <div class="briefing-featured-item">
-          <img class="briefing-featured-avatar" src="https://via.placeholder.com/64" alt="Expert 1">
-          <div class="briefing-featured-name">Jean Devaux</div>
-          <div class="briefing-featured-company">CoinShares</div>
+          {person.imageUrl ? (
+            <img class="briefing-featured-avatar" src={person.imageUrl} alt={person.name}>
+          ) : (
+            <div class="briefing-featured-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface-warm);font-family:var(--mono);font-size:.7rem;font-weight:600;color:var(--text-2);">{person.name.split(" ").map(n => n[0]).join("")}</div>
+          )}
+          <div class="briefing-featured-name">{person.name}</div>
+          {person.company && <div class="briefing-featured-company">{person.company}</div>}
         </div>
-        <div class="briefing-featured-item">
-          <img class="briefing-featured-avatar" src="https://via.placeholder.com/64" alt="Expert 2">
-          <div class="briefing-featured-name">Thomas & Frank</div>
-          <div class="briefing-featured-company">VanEck</div>
-        </div>
-        <div class="briefing-featured-item">
-          <img class="briefing-featured-avatar" src="https://via.placeholder.com/64" alt="Expert 3">
-          <div class="briefing-featured-name">Laura Ruiz</div>
-          <div class="briefing-featured-company">Allfunds Blockchain</div>
-        </div>
-        <div class="briefing-featured-item">
-          <img class="briefing-featured-avatar" src="https://via.placeholder.com/64" alt="Expert 4">
-          <div class="briefing-featured-name">Marc Woud</div>
-          <div class="briefing-featured-company">Woud Law</div>
-        </div>
+        ))}
       </div>
     </div>
+    )}
     <div class="briefing-footer">
-      <a href="#" class="briefing-read">Read full briefing →</a>
+      <a href={institutionalBriefing.webUrl || "#"} class="briefing-read">Read full briefing →</a>
       <div class="briefing-share">
         <button>Share</button>
       </div>
     </div>
   </div>
+  ) : (
+  <div class="briefing-card reveal" data-briefing="institutional">
+    <div class="briefing-band">
+      <div class="briefing-band-text">
+        <div class="briefing-tag">Institutional Briefing</div>
+        <h2>No briefing available</h2>
+        <div class="briefing-meta">Check back soon for the latest updates</div>
+      </div>
+    </div>
+  </div>
+  )}
 
   <!-- Crypto Briefing -->
+  {cryptoBriefing ? (
   <div class="briefing-card" data-briefing="crypto" style="display:none">
     <div class="briefing-band">
       <div class="briefing-band-text">
-        <div class="briefing-tag">Crypto Briefing · Feb 13, 2026</div>
-        <h2>Twelve nine figures at Coinbase</h2>
-        <div class="briefing-meta">By Fiodar Yuzhyk &amp; Maximilian Vargas · 8min structured read</div>
+        <div class="briefing-tag">Crypto Briefing · {formatDate(cryptoBriefing.publishDate)}</div>
+        <h2>{cryptoBriefing.title}</h2>
+        <div class="briefing-meta">By {cryptoBriefing.authors.map(a => a.name).join(" & ")} · {calculateReadTime(cryptoBriefing.content)}min structured read</div>
       </div>
       <div class="briefing-band-vis">
         <div class="briefing-authors">
+          {cryptoBriefing.authors.map((author, idx) => (
           <div>
-            <img class="briefing-avatar" src="fio.jpeg" alt="Fiodar Yuzhyk">
-            <div class="briefing-author-info"><div class="briefing-author-name">Fiodar Yuzhyk</div><div class="briefing-author-role">Lead Crypto Research</div></div>
+            {author.imageUrl ? (
+              <img class="briefing-avatar" src={author.imageUrl} alt={author.name}>
+            ) : (
+              <div class="briefing-avatar briefing-avatar-init">{author.name.split(" ").map(n => n[0]).join("")}</div>
+            )}
+            <div class="briefing-author-info"><div class="briefing-author-name">{author.name}</div><div class="briefing-author-role">{getAuthorRole(idx, cryptoBriefing.beehiivPublicationId)}</div></div>
           </div>
-          <div>
-            <img class="briefing-avatar" src="Maximilian Vargas.jpg" alt="Maximilian Vargas">
-            <div class="briefing-author-info"><div class="briefing-author-name">Maximilian Vargas</div><div class="briefing-author-role">Founder</div></div>
-          </div>
+          ))}
         </div>
         <span class="briefing-label-corner">Crypto Briefing</span>
       </div>
     </div>
+    {cryptoBriefing.summary && (
     <div class="briefing-summary-section">
       <div class="briefing-summary-label">Also in this edition</div>
       <ul class="briefing-summary">
-        <li>Coinbase reported <strong>$1.78B in Q4 revenue</strong> and now custodies 12% of all crypto globally</li>
-        <li>BlackRock's BUIDL fund is now <strong>tradeable on Uniswap</strong> for qualified purchasers</li>
-        <li>Tokenized equities on Euler and Morpho can now serve as <strong>collateral for stablecoin loans</strong></li>
+        {cryptoBriefing.summary.split("\n").filter(line => line.trim()).map(line => (
+          <li>{line}</li>
+        ))}
       </ul>
     </div>
+    )}
+    {cryptoBriefing.featured.length > 0 && (
     <div class="briefing-featured">
       <span class="briefing-featured-label">Experts featured:</span>
       <div class="briefing-featured-row">
+        {cryptoBriefing.featured.map(person => (
         <div class="briefing-featured-item">
-          <img class="briefing-featured-avatar" src="https://via.placeholder.com/64" alt="Expert 1">
-          <div class="briefing-featured-name">Brian Armstrong</div>
-          <div class="briefing-featured-company">Coinbase</div>
+          {person.imageUrl ? (
+            <img class="briefing-featured-avatar" src={person.imageUrl} alt={person.name}>
+          ) : (
+            <div class="briefing-featured-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface-warm);font-family:var(--mono);font-size:.7rem;font-weight:600;color:var(--text-2);">{person.name.split(" ").map(n => n[0]).join("")}</div>
+          )}
+          <div class="briefing-featured-name">{person.name}</div>
+          {person.company && <div class="briefing-featured-company">{person.company}</div>}
         </div>
-        <div class="briefing-featured-item">
-          <img class="briefing-featured-avatar" src="https://via.placeholder.com/64" alt="Expert 2">
-          <div class="briefing-featured-name">Robert Mitchnick</div>
-          <div class="briefing-featured-company">BlackRock</div>
-        </div>
-        <div class="briefing-featured-item">
-          <img class="briefing-featured-avatar" src="https://via.placeholder.com/64" alt="Expert 3">
-          <div class="briefing-featured-name">Johann Kerbrat</div>
-          <div class="briefing-featured-company">Robinhood</div>
-        </div>
+        ))}
       </div>
     </div>
+    )}
     <div class="briefing-footer">
-      <a href="#" class="briefing-read">Read full briefing →</a>
+      <a href={cryptoBriefing.webUrl || "#"} class="briefing-read">Read full briefing →</a>
       <div class="briefing-share">
         <button>Share</button>
       </div>
     </div>
   </div>
+  ) : (
+  <div class="briefing-card" data-briefing="crypto" style="display:none">
+    <div class="briefing-band">
+      <div class="briefing-band-text">
+        <div class="briefing-tag">Crypto Briefing</div>
+        <h2>No briefing available</h2>
+        <div class="briefing-meta">Check back soon for the latest updates</div>
+      </div>
+    </div>
+  </div>
+  )}
 
   <!-- ═══ 6. MARKET FLOW ═══ -->
   <section class="flow-sec reveal" id="flow">
