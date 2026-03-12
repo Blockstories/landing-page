@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { generateText } from "../integrations/openai.js";
-import { loadPrompt, fillPrompt } from "../../utils/promptLoader.js";
+import { loadPrompt, fillPrompt } from "../utils/promptLoader.js";
 
 /**
  * Generate a summary of a news article using the article-summary prompt.
