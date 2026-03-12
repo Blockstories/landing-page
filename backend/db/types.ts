@@ -16,3 +16,10 @@ export interface Article {
   summary?: string;
   content?: string;
 }
+
+export interface Person {
+  id: number;
+  name: string;
+  slug: string;
+  imageUrl?: string;
+}

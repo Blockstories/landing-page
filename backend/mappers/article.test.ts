@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { mapRowToArticle, mapBeehiivPostToArticle } from "./article.js";
+import { mapBeehiivPostToArticle } from "./article.js";
+import { mapRowToArticle } from "../db/mappers.js";
 import { BeehiivPost } from "../integrations/beehiiv.js";
 
 describe("mapRowToArticle", () => {

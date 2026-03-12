@@ -1,8 +1,8 @@
 import { db } from "./client.js";
-import type { Article } from "./types.js";
-import { mapRowToArticle } from "../mappers/article.js";
+import type { Article, Person } from "./types.js";
+import { mapRowToArticle, mapRowToPerson } from "./mappers.js";
 
-export type { Article };
+export type { Article, Person };
 
 /**
  * Get newest articles
@@ -44,13 +44,13 @@ export async function createArticle(article: Omit<Article, "id">): Promise<Artic
       article.beehiivPostId,
       article.beehiivPublicationId,
       article.title,
-      article.subtitle,
+      article.subtitle ?? null,
       JSON.stringify(article.authors),
       article.publishDate,
       article.status,
       JSON.stringify(article.tags),
-      article.thumbnailUrl,
-      article.webUrl,
+      article.thumbnailUrl ?? null,
+      article.webUrl ?? null,
       article.summary || null,
       article.content || null,
     ]
@@ -88,4 +88,30 @@ export async function updateArticleContent(
     "UPDATE articles SET content = ? WHERE beehiiv_publication_id = ? AND beehiiv_post_id = ?",
     [content, publicationId, postId]
   );
+}
+
+/**
+ * Get person by slug
+ */
+export async function getPersonBySlug(slug: string): Promise<Person | null> {
+  const result = await db.execute(
+    "SELECT * FROM people WHERE slug = ?",
+    [slug]
+  );
+
+  const row = result.rows[0];
+  return row ? mapRowToPerson(row) : null;
+}
+
+/**
+ * Get person by name
+ */
+export async function getPersonByName(name: string): Promise<Person | null> {
+  const result = await db.execute(
+    "SELECT * FROM people WHERE name = ?",
+    [name]
+  );
+
+  const row = result.rows[0];
+  return row ? mapRowToPerson(row) : null;
 }
