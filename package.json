@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
     "test-beehiiv": "tsx services/processBeehiivPost.ts",
     "test-softr": "tsx services/softrService.ts",
     "test-openai": "tsx services/openaiService.ts",
@@ -14,10 +18,12 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.7",
     "@libsql/client": "^0.17.0",
     "@types/node": "^20.0.0",
+    "astro": "^5.18.1",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0",
+    "typescript": "^5.9.3",
     "vite-node": "^5.3.0",
     "vitest": "^4.0.18"
   },

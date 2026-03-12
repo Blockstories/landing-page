@@ -1,43 +1,53 @@
 import "dotenv/config";
-import { generateCompletion, generateText } from "../integrations/openai.js";
+import { generateText } from "../integrations/openai.js";
+import { loadPrompt, fillPrompt } from "../utils/promptLoader.js";
 
-async function testOpenAIIntegration() {
-  console.log("Testing OpenAI Integration...\n");
+/**
+ * Generate a summary of a news article using the article-summary prompt.
+ */
+export async function summarizeArticle(articleText: string): Promise<string> {
+  const prompt = loadPrompt("article-summary");
+  const filledPrompt = fillPrompt(prompt.template, { article: articleText });
+
+  const summary = await generateText({
+    model: prompt.model,
+    prompt: filledPrompt,
+    temperature: prompt.temperature,
+    maxTokens: prompt.maxTokens,
+  });
+
+  return summary;
+}
+
+// Test function for development
+async function testSummarizeArticle() {
+  console.log("Testing Article Summarization...\n");
 
   if (!process.env.OPENAI_API_KEY) {
     console.error("Error: OPENAI_API_KEY not set in environment");
     process.exit(1);
   }
 
+  const sampleArticle = `
+Bitcoin surged to a new all-time high of $73,000 on Tuesday, driven by record
+inflows into spot Bitcoin ETFs. BlackRock's IBIT alone saw over $800 million
+in daily inflows, bringing its total assets under management to over $15 billion.
+Analysts attribute the rally to institutional adoption and anticipation of the
+upcoming Bitcoin halving event scheduled for April.
+  `.trim();
+
   try {
-    // Test 1: Simple completion with gpt-4o-mini
-    console.log("Test 1: Simple completion with gpt-4o-mini");
-    console.log("-------------------------------------------");
+    console.log("Input article:");
+    console.log("-".repeat(50));
+    console.log(sampleArticle);
+    console.log("-".repeat(50));
+    console.log("\nGenerating summary...\n");
 
-    const response1 = await generateCompletion({
-      model: "gpt-4o-mini",
-      prompt: "What are 3 benefits of blockchain technology?"
-    });
+    const summary = await summarizeArticle(sampleArticle);
 
-    console.log("Model:", response1.model);
-    console.log("Usage:", response1.usage);
-    console.log("Response:", response1.choices[0]?.message?.content);
-
-    // Test 2: With system message using generateText convenience function
-    console.log("\n\nTest 2: With system message (using generateText)");
-    console.log("--------------------------------------------------");
-
-    const text = await generateText({
-      model: "gpt-4o-mini",
-      prompt: "Explain DeFi in one sentence.",
-      systemMessage: "You are a blockchain expert. Be concise.",
-      temperature: 0.7,
-      maxTokens: 100
-    });
-
-    console.log("Response:", text);
-
-    console.log("\n✅ All tests completed successfully!");
+    console.log("Summary:");
+    console.log(summary);
+    console.log("\n✅ Test completed successfully!");
 
   } catch (error) {
     console.error("\n❌ Test failed:", error);
@@ -45,4 +55,7 @@ async function testOpenAIIntegration() {
   }
 }
 
-testOpenAIIntegration();
+// Run test if this file is executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  testSummarizeArticle();
+}

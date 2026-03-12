@@ -142,6 +142,7 @@
     <button class="tab active" data-tab="lookup">Lookup Article</button>
     <button class="tab" data-tab="list">List Articles</button>
     <button class="tab" data-tab="softr">Softr API</button>
+    <button class="tab" data-tab="summarize">AI Summarize</button>
   </div>
 
   <div id="lookup-tab" class="section">
@@ -203,13 +204,48 @@
     <div id="softr-result"></div>
   </div>
 
+  <div id="summarize-tab" class="section hidden">
+    <h2>AI Article Summarization</h2>
+    <p style="color: #666; margin-bottom: 16px; font-size: 14px;">
+      Enter article content below to generate an AI-powered summary using GPT-4o-mini.
+    </p>
+    <div class="form-group">
+      <label>Article Content</label>
+      <textarea id="summarizeContent" rows="10" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-size: 14px; resize: vertical;" placeholder="Paste article content here..."></textarea>
+    </div>
+    <button id="summarizeBtn">Generate Summary</button>
+    <div id="summarize-result"></div>
+  </div>
+
+  <style>
+    .summary-box {
+      background: #f0f7ff;
+      border-left: 4px solid #0066ff;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 0 8px 8px 0;
+    }
+    .summary-box h3 {
+      font-size: 14px;
+      color: #0066ff;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .summary-box p {
+      font-size: 16px;
+      line-height: 1.7;
+      color: #333;
+    }
+  </style>
+
   <script>
     // Tab switching
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const tabName = tab.dataset.tab;
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('#lookup-tab, #list-tab, #softr-tab').forEach(t => t.classList.add('hidden'));
+        document.querySelectorAll('#lookup-tab, #list-tab, #softr-tab, #summarize-tab').forEach(t => t.classList.add('hidden'));
         tab.classList.add('active');
         document.getElementById(tabName + '-tab').classList.remove('hidden');
         if (tabName === 'list') loadArticles();
@@ -414,6 +450,66 @@
         });
       } catch (err) {
         resultDiv.innerHTML = '<div class="error">Error: ' + err.message + '</div>';
+      }
+    });
+
+    // AI Summarization
+    document.getElementById('summarizeBtn').addEventListener('click', async () => {
+      const content = document.getElementById('summarizeContent').value.trim();
+      const resultDiv = document.getElementById('summarize-result');
+
+      if (!content) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error';
+        errorDiv.textContent = 'Please enter article content to summarize';
+        resultDiv.innerHTML = '';
+        resultDiv.appendChild(errorDiv);
+        return;
+      }
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'loading';
+      loadingDiv.textContent = 'Generating summary... (this may take a few seconds)';
+      resultDiv.innerHTML = '';
+      resultDiv.appendChild(loadingDiv);
+
+      try {
+        const response = await fetch('/api/summarize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'error';
+          errorDiv.textContent = 'Error: ' + (data.error || 'Unknown error');
+          resultDiv.innerHTML = '';
+          resultDiv.appendChild(errorDiv);
+          return;
+        }
+
+        // Build summary box with safe DOM methods
+        const summaryBox = document.createElement('div');
+        summaryBox.className = 'summary-box';
+
+        const heading = document.createElement('h3');
+        heading.textContent = 'AI-Generated Summary';
+        summaryBox.appendChild(heading);
+
+        const summaryText = document.createElement('p');
+        summaryText.textContent = data.summary;
+        summaryBox.appendChild(summaryText);
+
+        resultDiv.innerHTML = '';
+        resultDiv.appendChild(summaryBox);
+      } catch (err) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error';
+        errorDiv.textContent = 'Error: ' + err.message;
+        resultDiv.innerHTML = '';
+        resultDiv.appendChild(errorDiv);
       }
     });
   </script>

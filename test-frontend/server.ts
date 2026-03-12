@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import { getArticleByPublicationIdAndPostId, getNewestArticles } from "../db/queries.js";
 import { getRecordsWithMappedFields, getRecordsRaw } from "../services/softrService.js";
+import { summarizeArticle } from "../services/openaiService.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -154,6 +155,38 @@ async function handleAPI(req: IncomingMessage, res: ServerResponse) {
     } catch (err: any) {
       res.writeHead(500, { "Content-Type": "application/json", ...corsHeaders });
       res.end(JSON.stringify({ error: err.message || "Failed to fetch Softr records" }));
+    }
+    return;
+  }
+
+  // POST /api/summarize - summarize article content
+  if (pathname === "/api/summarize" && req.method === "POST") {
+    try {
+      let body = "";
+      req.on("data", chunk => body += chunk);
+      req.on("end", async () => {
+        try {
+          const { content } = JSON.parse(body);
+          if (!content) {
+            res.writeHead(400, { "Content-Type": "application/json", ...corsHeaders });
+            res.end(JSON.stringify({ error: "Content is required" }));
+            return;
+          }
+
+          // Strip HTML tags for cleaner summarization
+          const textContent = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+
+          const summary = await summarizeArticle(textContent);
+          res.writeHead(200, { "Content-Type": "application/json", ...corsHeaders });
+          res.end(JSON.stringify({ summary }));
+        } catch (err: any) {
+          res.writeHead(500, { "Content-Type": "application/json", ...corsHeaders });
+          res.end(JSON.stringify({ error: err.message || "Failed to summarize" }));
+        }
+      });
+    } catch (err: any) {
+      res.writeHead(500, { "Content-Type": "application/json", ...corsHeaders });
+      res.end(JSON.stringify({ error: err.message || "Failed to summarize" }));
     }
     return;
   }
