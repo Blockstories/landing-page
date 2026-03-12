@@ -1,8 +1,8 @@
 import { db } from "./client.js";
-import { Article } from "./types.js";
+import type { Article } from "./types.js";
 import { mapRowToArticle } from "../mappers/article.js";
 
-export { Article };
+export type { Article };
 
 /**
  * Get newest articles
