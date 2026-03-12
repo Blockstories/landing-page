@@ -28,6 +28,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@astrojs/vercel": "^8.2.11",
     "dotenv": "^17.3.1"
   }
 }
