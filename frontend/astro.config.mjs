@@ -1,7 +1,7 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  output: 'static',
+  output: 'server',
   site: 'https://blockstories.com',
   srcDir: './src',
   outDir: '../dist',
