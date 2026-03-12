@@ -154,6 +154,19 @@ export async function updateArticleContent(
 }
 
 /**
+ * Update article summary
+ */
+export async function updateArticleSummary(
+  articleId: number,
+  summary: string
+): Promise<void> {
+  await db.execute(
+    "UPDATE articles SET summary = ? WHERE id = ?",
+    [summary, articleId]
+  );
+}
+
+/**
  * Add person to article
  */
 export async function addPersonToArticle(
