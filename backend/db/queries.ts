@@ -23,11 +23,13 @@ async function getPeopleForArticle(articleId: number): Promise<Array<{ person: P
 
 /**
  * Get newest articles with their people
+ * @param count - Number of articles to fetch (default: 10)
+ * @param offset - Number of articles to skip for pagination (default: 0)
  */
-export async function getNewestArticles(count: number = 10): Promise<Article[]> {
+export async function getNewestArticles(count: number = 10, offset: number = 0): Promise<Article[]> {
   const result = await db.execute(
-    "SELECT * FROM articles ORDER BY publish_date DESC LIMIT ?",
-    [count]
+    "SELECT * FROM articles ORDER BY publish_date DESC LIMIT ? OFFSET ?",
+    [count, offset]
   );
 
   const articles = result.rows.map(mapRowToArticle);

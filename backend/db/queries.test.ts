@@ -63,8 +63,8 @@ describe("getNewestArticles", () => {
     const result = await getNewestArticles(10);
 
     expect(mockExecute).toHaveBeenCalledWith(
-      "SELECT * FROM articles ORDER BY publish_date DESC LIMIT ?",
-      [10]
+      "SELECT * FROM articles ORDER BY publish_date DESC LIMIT ? OFFSET ?",
+      [10, 0]
     );
     expect(result).toHaveLength(2);
     expect(result[0].title).toBe("Article 1");
@@ -73,15 +73,46 @@ describe("getNewestArticles", () => {
     expect(result[0].featured).toEqual([]);
   });
 
-  it("should use default limit of 10 when not specified", async () => {
+  it("should use default limit of 10 and offset of 0 when not specified", async () => {
     mockExecute.mockResolvedValueOnce({ rows: [] } as any);
 
     await getNewestArticles();
 
     expect(mockExecute).toHaveBeenCalledWith(
-      "SELECT * FROM articles ORDER BY publish_date DESC LIMIT ?",
-      [10]
+      "SELECT * FROM articles ORDER BY publish_date DESC LIMIT ? OFFSET ?",
+      [10, 0]
     );
+  });
+
+  it("should support pagination with offset", async () => {
+    const mockRows = [
+      {
+        id: 3,
+        beehiiv_post_id: "post_3",
+        beehiiv_publication_id: "pub_1",
+        title: "Article 3",
+        subtitle: null,
+        publish_date: 1699900000,
+        status: "confirmed",
+        tags: "[]",
+        thumbnail_url: null,
+        web_url: null,
+        summary: null,
+        content: null
+      }
+    ];
+
+    mockExecute.mockResolvedValueOnce({ rows: mockRows } as any);
+    mockEmptyPeopleForArticles([3]);
+
+    const result = await getNewestArticles(1, 2);
+
+    expect(mockExecute).toHaveBeenCalledWith(
+      "SELECT * FROM articles ORDER BY publish_date DESC LIMIT ? OFFSET ?",
+      [1, 2]
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Article 3");
   });
 
   it("should return empty array when no articles exist", async () => {
