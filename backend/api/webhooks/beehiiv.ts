@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../../loadEnv.js";
 import { getArticleByPublicationIdAndPostId } from "../../db/queries.js";
 import { processBeehiivPost } from "../../services/processBeehiivPost.js";
 

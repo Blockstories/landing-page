@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../loadEnv.js";
 
 const WEBHOOK_URL = process.env.WEBHOOK_BASE_URL || "http://localhost:3000";
 const WEBHOOK_ENDPOINT = `${WEBHOOK_URL}/webhooks/beehiiv`;

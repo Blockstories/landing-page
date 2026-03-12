@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../loadEnv.js";
 import { db } from "../db/client.js";
 import { getArticleById, updateArticleSummary } from "../db/queries.js";
 import { generateText } from "../integrations/openai.js";

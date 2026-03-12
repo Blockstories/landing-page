@@ -1,39 +1,46 @@
-import type { ArticlesResponse } from "../pages/api/articles.js";
+import type { Article } from "../../../backend/db/types.js";
 
 export interface FetchArticlesOptions {
-  publicationId: string;
   limit?: number;
-  cursor?: string;
-  baseUrl: string;  // Required: pass Astro.url.origin from server context
+  offset?: number;
+  baseUrl?: string;
 }
 
+export interface FetchArticlesResult {
+  articles: Article[];
+  count: number;
+}
+
+/**
+ * Fetch articles from the API
+ * GET /api/articles
+ */
 export async function fetchArticles(
-  options: FetchArticlesOptions
-): Promise<ArticlesResponse> {
-  const { publicationId, limit = 10, cursor, baseUrl } = options;
+  options: FetchArticlesOptions = {}
+): Promise<FetchArticlesResult> {
+  const { limit = 10, offset = 0, baseUrl = "" } = options;
 
-  const params = new URLSearchParams();
-  params.set("publicationId", publicationId);
-  if (limit !== 10) params.set("limit", limit.toString());
-  if (cursor) params.set("cursor", cursor);
+  const url = new URL("/api/articles", baseUrl || window.location.origin);
+  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("offset", String(offset));
 
-  // Construct absolute URL using baseUrl from Astro.url.origin
-  const url = `${baseUrl}/api/articles?${params.toString()}`;
+  const response = await fetch(url.toString());
 
-  // Add 5-second timeout using AbortController
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || `Failed to fetch articles: ${response.status}`);
-    }
-
-    return response.json() as Promise<ArticlesResponse>;
-  } finally {
-    clearTimeout(timeoutId);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
   }
+
+  return response.json();
+}
+
+/**
+ * Filter articles by publication ID
+ */
+export function filterArticlesByPublication(
+  articles: Article[],
+  publicationId: string
+): Article[] {
+  return articles.filter(
+    (article) => article.beehiivPublicationId === publicationId
+  );
 }

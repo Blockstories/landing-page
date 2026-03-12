@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../loadEnv.js";
 import { getPostByPublicationIdAndPostId } from "../integrations/beehiiv.js";
 import { createArticle, findOrCreatePerson, Article } from "../db/queries.js";
 import { mapBeehiivPostToArticle } from "../mappers/article.js";

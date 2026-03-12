@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../loadEnv.js";
 import { db } from "../db/client.js";
 import { findOrCreatePerson, addPersonToArticle } from "../db/queries.js";
 

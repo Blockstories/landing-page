@@ -8,4 +8,11 @@ export default defineConfig({
   srcDir: './src',
   outDir: '../dist',
   publicDir: '../public',
+  vite: {
+    server: {
+      fs: {
+        allow: ['..']
+      }
+    }
+  }
 });

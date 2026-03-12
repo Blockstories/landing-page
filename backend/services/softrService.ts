@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../loadEnv.js";
 import { getRecords, getTableSchema, GetRecordsOptions, RecordsResponse, Record } from "../integrations/softr.js";
 
 // Cache for field mapping (fieldId -> fieldName)

@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { fetchArticles } from '../lib/api.js';
+import { fetchArticles, filterArticlesByPublication } from '../lib/api.js';
 
 const baseUrl = Astro.url.origin;
 const institutionalPubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
@@ -10,13 +10,15 @@ const activeTab = Astro.url.searchParams.get("tab") || "institutional";
 const activePubId = activeTab === "crypto" ? cryptoPubId : institutionalPubId;
 
 let articles = [];
-let pagination = { hasMore: false };
+let hasMore = false;
 
 if (activePubId) {
   try {
-    const result = await fetchArticles({ publicationId: activePubId, limit: 10, baseUrl });
-    articles = result.articles;
-    pagination = result.pagination;
+    // Fetch all recent articles and filter by active publication
+    const result = await fetchArticles({ limit: 50, baseUrl });
+    const filteredArticles = filterArticlesByPublication(result.articles, activePubId);
+    articles = filteredArticles.slice(0, 10);
+    hasMore = filteredArticles.length > 10;
   } catch (error) {
     console.error("Failed to fetch articles:", error);
   }
@@ -484,9 +486,9 @@ function getTagClass(tag: string): string {
         </div>
       )}
 
-      {pagination.hasMore && (
+      {hasMore && (
         <div class="load-more">
-          <button data-cursor={pagination.nextCursor}>Load More</button>
+          <button>Load More</button>
         </div>
       )}
     </div>

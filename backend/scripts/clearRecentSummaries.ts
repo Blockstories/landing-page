@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../loadEnv.js";
 import { db } from "../db/client.js";
 
 async function clearRecentSummaries(count: number = 20): Promise<void> {

@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "../loadEnv.js";
 import { generateText } from "../integrations/openai.js";
 import { loadPrompt, fillPrompt } from "../utils/promptLoader.js";
 
