@@ -53,7 +53,7 @@ if (!isBuildTime) {
 
 // Helper function to format time from timestamp
 function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // Helper function to calculate read time from content
@@ -1306,6 +1306,7 @@ async function loadBriefings(){
   const hasInst=instPanel&&!instPanel.querySelector('h2')?.textContent?.includes('No briefing');
   const hasCrypto=cryptoPanel&&!cryptoPanel.querySelector('h2')?.textContent?.includes('No briefing');
   if(hasInst&&hasCrypto)return;
+  console.log('[API] Fetching articles for: Briefing fallback (client-side)');
   try{
     const res=await fetch('/api/articles?limit=20');
     if(!res.ok)return;

@@ -4,6 +4,8 @@ export interface FetchArticlesOptions {
   limit?: number;
   offset?: number;
   baseUrl?: string;
+  /** Purpose/section identifier for dev logging */
+  purpose?: string;
 }
 
 export interface FetchArticlesResult {
@@ -18,12 +20,13 @@ export interface FetchArticlesResult {
 export async function fetchArticles(
   options: FetchArticlesOptions = {}
 ): Promise<FetchArticlesResult> {
-  const { limit = 10, offset = 0, baseUrl = "" } = options;
+  const { limit = 10, offset = 0, baseUrl = "", purpose = "unknown" } = options;
 
   const url = new URL("/api/articles", baseUrl || window.location.origin);
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("offset", String(offset));
 
+  console.log(`[API] Fetching articles for: ${purpose} | limit=${limit}, offset=${offset}`);
   const response = await fetch(url.toString());
 
   if (!response.ok) {
