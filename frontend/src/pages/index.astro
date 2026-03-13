@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getArticlesByPublication, getArticlesByTags } from '../../../backend/db/queries.js';
+import { getArticlesByPublication, getArticlesByTags, getArticleByPublicationIdAndPostId } from '../../../backend/db/queries.js';
 
 const pageStart = performance.now();
 console.log(`[index.astro] Starting render`);
@@ -73,6 +73,19 @@ if (!isBuildTime) {
     analysisArticles = await getArticlesByTags(10, ['analysis']);
   } catch (error) {
     console.error("[index.astro] Failed to fetch Reporting & Analysis articles:", error);
+  }
+}
+
+// Fetch flagship report (hardcoded DB entry)
+let flagshipReport: Awaited<ReturnType<typeof getArticleByPublicationIdAndPostId>> | null = null;
+if (!isBuildTime) {
+  try {
+    flagshipReport = await getArticleByPublicationIdAndPostId(
+      'pub_ea97d244-f74b-49b3-a7c0-17f14829e241',
+      'post_209a8e0f-e586-494e-b456-4409a7f13944'
+    );
+  } catch (error) {
+    console.error("[index.astro] Failed to fetch flagship report:", error);
   }
 }
 
@@ -577,35 +590,36 @@ function getPrimaryTag(tags: string[]): string | null {
   margin:var(--sp-xl) 0;background:var(--surface-dark);border-radius:8px;
   overflow:hidden;display:grid;grid-template-columns:1fr 1.4fr;min-height:300px;
 }
-.fl-vis{
+.report-vis{
   position:relative;display:flex;align-items:center;justify-content:center;
   background:var(--surface-dark);overflow:hidden;padding:32px;
 }
-.fl-vis img{
+.report-vis img{
   max-width:100%;max-height:320px;object-fit:contain;position:relative;z-index:1;
   filter:drop-shadow(0 8px 28px rgba(0,0,0,.3));
 }
-.fl-content{padding:44px 40px;display:flex;flex-direction:column;justify-content:center}
-.fl-eyebrow{font-family:var(--mono);font-size:.5rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
-.fl-title{font-family:var(--display);font-size:1.85rem;font-weight:700;color:#fff;line-height:1.2;letter-spacing:-.02em;margin-bottom:12px}
-.fl-desc{font-size:.9rem;line-height:1.65;color:rgba(255,255,255,.5);margin-bottom:22px;max-width:440px}
-.fl-stats{display:flex;gap:28px;margin-bottom:24px}
-.fl-st-val{font-family:var(--display);font-size:1.4rem;font-weight:700;color:#fff;line-height:1}
-.fl-st-lbl{font-family:var(--mono);font-size:.4rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:3px}
-.fl-ctas{display:flex;gap:10px;align-items:center}
-.fl-btn{
+.report-content{padding:44px 40px;display:flex;flex-direction:column;justify-content:center}
+.report-eyebrow{font-family:var(--mono);font-size:.5rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.report-title{font-family:var(--display);font-size:1.85rem;font-weight:700;color:#fff;line-height:1.2;letter-spacing:-.02em;margin-bottom:12px}
+.report-desc{font-size:.9rem;line-height:1.65;color:rgba(255,255,255,.5);margin-bottom:22px;max-width:440px}
+.report-stats{display:flex;gap:28px;margin-bottom:24px}
+.report-stat-val{font-family:var(--display);font-size:1.4rem;font-weight:700;color:#fff;line-height:1}
+.report-stat-lbl{font-family:var(--mono);font-size:.4rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:3px}
+.report-ctas{display:flex;gap:10px;align-items:center}
+.report-btn{
   font-family:var(--mono);font-size:.65rem;font-weight:500;letter-spacing:.04em;
   text-transform:uppercase;padding:11px 24px;background:var(--accent);color:#fff;
   border:none;border-radius:3px;cursor:pointer;transition:all var(--ease);
+  text-decoration:none;display:inline-block;
 }
-.fl-btn:hover{background:#4A7672}
-.fl-ghost{
+.report-btn:hover{background:#4A7672}
+.report-ghost{
   font-family:var(--mono);font-size:.65rem;font-weight:500;letter-spacing:.04em;
   text-transform:uppercase;padding:11px 24px;background:none;
   color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.15);
   border-radius:3px;cursor:pointer;transition:all var(--ease);
 }
-.fl-ghost:hover{border-color:rgba(255,255,255,.4);color:#fff}
+.report-ghost:hover{border-color:rgba(255,255,255,.4);color:#fff}
 
 /* ═══ 11. EVENTS ═══ */
 .ev-sec{margin-bottom:var(--sp-xl)}
@@ -708,7 +722,7 @@ function getPrimaryTag(tags: string[]): string | null {
   .d-stats{grid-template-columns:1fr 1fr}
   .d-tables{grid-template-columns:1fr}
   .flagship{grid-template-columns:1fr}
-  .fl-vis{min-height:180px}
+  .report-vis{min-height:180px}
   .ev-video{height:240px}
   .ev-v-content{padding:24px}
   .ev-v-title{font-size:1.4rem}
@@ -745,8 +759,8 @@ function getPrimaryTag(tags: string[]): string | null {
   .cta-form .row{flex-direction:column}
   .cta-form input{width:100%}
   .nav{display:none}
-  .fl-stats{flex-direction:column;gap:14px}
-  .fl-ctas{flex-direction:column}
+  .report-stats{flex-direction:column;gap:14px}
+  .report-ctas{flex-direction:column}
   .marketflow-item{grid-template-columns:52px 1fr;gap:12px}
 }
 </style>
@@ -1207,20 +1221,20 @@ function getPrimaryTag(tags: string[]): string | null {
 
   <!-- ═══ 10. FLAGSHIP REPORT ═══ -->
   <div class="flagship reveal">
-    <div class="fl-vis">
-      <img src="European Banks and Stablecoins Report.png" alt="European Banks & Stablecoins Report">
+    <div class="report-vis">
+      <img src={flagshipReport?.thumbnailUrl || "European Banks and Stablecoins Report.png"} alt={flagshipReport?.title || "Flagship Report"}>
     </div>
-    <div class="fl-content">
-      <div class="fl-eyebrow">Flagship Report · Free Download</div>
-      <h3 class="fl-title">European Banks & Stablecoins Report</h3>
-      <p class="fl-desc">A collection of eight in-depth interviews with European banks on their stablecoin strategies.</p>
-      <div class="fl-stats">
-        <div><div class="fl-st-val">8</div><div class="fl-st-lbl">Bank Interviews</div></div>
-        <div><div class="fl-st-val">45</div><div class="fl-st-lbl">Pages</div></div>
-        <div><div class="fl-st-val">8</div><div class="fl-st-lbl">Stablecoin Strategies</div></div>
+    <div class="report-content">
+      <div class="report-eyebrow">Flagship Report · Free Download</div>
+      <h3 class="report-title">{flagshipReport?.title || "European Banks & Stablecoins Report"}</h3>
+      <p class="report-desc">{flagshipReport?.shortSummary || flagshipReport?.summary || "A collection of eight in-depth interviews with European banks on their stablecoin strategies."}</p>
+      <div class="report-stats">
+        <div><div class="report-stat-val">8</div><div class="report-stat-lbl">Bank Interviews</div></div>
+        <div><div class="report-stat-val">45</div><div class="report-stat-lbl">Pages</div></div>
+        <div><div class="report-stat-val">8</div><div class="report-stat-lbl">Stablecoin Strategies</div></div>
       </div>
-      <div class="fl-ctas">
-        <button class="fl-btn">Download Report For Free</button>
+      <div class="report-ctas">
+        <a href={flagshipReport?.webUrl || "#"} class="report-btn" target="_blank" rel="noopener">Download Report For Free</a>
       </div>
     </div>
   </div>
