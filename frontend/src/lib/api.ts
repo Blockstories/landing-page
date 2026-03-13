@@ -1,4 +1,4 @@
-import type { Article } from "../../../backend/db/types.js";
+import type { Article } from "../types/article.js";
 
 export interface FetchArticlesOptions {
   limit?: number;

@@ -7,7 +7,7 @@ export default defineConfig({
   site: 'https://blockstories.com',
   srcDir: './src',
   outDir: '../dist',
-  publicDir: '../public',
+  publicDir: './public',
   vite: {
     server: {
       fs: {

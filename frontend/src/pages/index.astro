@@ -1,6 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { fetchArticles, filterArticlesByPublication } from '../lib/api.js';
+import { getArticlesByPublication } from '../../../backend/db/queries.js';
+
+const pageStart = performance.now();
+console.log(`[index.astro] Starting render`);
 
 const institutionalPubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
 const cryptoPubId = import.meta.env.BEEHIIV_CRYPTO_PUB_ID || "";
@@ -12,26 +15,30 @@ let cryptoBriefing = null;
 const isBuildTime = import.meta.env.MODE === "production" && !import.meta.env.SSR;
 
 if (!isBuildTime) {
-  const baseUrl = Astro.url.origin;
-
   try {
-    // Fetch latest articles from all publications
-    const result = await fetchArticles({ limit: 20, baseUrl });
-
-    // Filter by publication
+    // Direct database queries - no HTTP overhead
+    // Fetch latest article from each publication
     if (institutionalPubId) {
-      const institutionalArticles = filterArticlesByPublication(result.articles, institutionalPubId);
-      institutionalBriefing = institutionalArticles[0] || null;
+      console.log(`[index.astro] Fetching institutional...`);
+      const start1 = performance.now();
+      const institutionalResult = await getArticlesByPublication(institutionalPubId, 1);
+      console.log(`[index.astro] Institutional fetched in ${(performance.now() - start1).toFixed(2)}ms`);
+      institutionalBriefing = institutionalResult.articles[0] || null;
     }
 
     if (cryptoPubId) {
-      const cryptoArticles = filterArticlesByPublication(result.articles, cryptoPubId);
-      cryptoBriefing = cryptoArticles[0] || null;
+      console.log(`[index.astro] Fetching crypto...`);
+      const start2 = performance.now();
+      const cryptoResult = await getArticlesByPublication(cryptoPubId, 1);
+      console.log(`[index.astro] Crypto fetched in ${(performance.now() - start2).toFixed(2)}ms`);
+      cryptoBriefing = cryptoResult.articles[0] || null;
     }
   } catch (error) {
-    console.error("Failed to fetch articles:", error);
+    console.error("[index.astro] Failed to fetch articles:", error);
   }
 }
+
+console.log(`[index.astro] Total SSR time: ${(performance.now() - pageStart).toFixed(2)}ms`);
 
 function calculateReadTime(content?: string): number {
   if (!content) return 0;
@@ -1232,6 +1239,30 @@ if(briefingTabs){
 // ═══ Scroll Reveal Animations ═══
 const observer=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+
+// ═══ Client-side Briefing Fetch (fallback if SSR failed) ═══
+async function loadBriefings(){
+  const instPanel=document.querySelector('[data-briefing="institutional"]');
+  const cryptoPanel=document.querySelector('[data-briefing="crypto"]');
+  const hasInst=instPanel&&!instPanel.querySelector('h2')?.textContent?.includes('No briefing');
+  const hasCrypto=cryptoPanel&&!cryptoPanel.querySelector('h2')?.textContent?.includes('No briefing');
+  if(hasInst&&hasCrypto)return;
+  try{
+    const res=await fetch('/api/articles?limit=20');
+    if(!res.ok)return;
+    const data=await res.json();
+    if(!data.articles||!data.articles.length)return;
+    const instPubId='pub_ea97d244-f74b-49b3-a7c0-17f14829e241';
+    const cryptoPubId='pub_01715eca-8680-4c80-8348-b34552fe2aaf';
+    const instArticle=data.articles.find(a=>a.beehiivPublicationId===instPubId);
+    const cryptoArticle=data.articles.find(a=>a.beehiivPublicationId===cryptoPubId);
+    if(instArticle&&!hasInst)location.reload();
+    if(cryptoArticle&&!hasCrypto)location.reload();
+  }catch(e){console.error('Failed to load briefings:',e);}
+}
+if(document.querySelector('[data-briefing] h2')?.textContent?.includes('No briefing')){
+  loadBriefings();
+}
 </script>
 
 </Layout>

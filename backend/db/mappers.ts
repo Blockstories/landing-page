@@ -1,10 +1,13 @@
 import type { Row } from "@libsql/client";
 import type { Article, Person, ArticleRole } from "./types.js";
 
+// Flexible row type that accepts both full Row objects and partial row data
+export type RowLike = Row | Record<string, unknown>;
+
 /**
  * Map database row to Article object (without people - attach separately)
  */
-export function mapRowToArticle(row: Row): Omit<Article, "authors" | "featured"> {
+export function mapRowToArticle(row: RowLike): Omit<Article, "authors" | "featured"> {
   return {
     id: row.id as number,
     beehiivPostId: row.beehiiv_post_id as string,
@@ -24,7 +27,7 @@ export function mapRowToArticle(row: Row): Omit<Article, "authors" | "featured">
 /**
  * Map database row to Person object
  */
-export function mapRowToPerson(row: Row): Person {
+export function mapRowToPerson(row: RowLike): Person {
   return {
     id: row.id as number,
     name: row.name as string,

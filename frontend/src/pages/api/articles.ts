@@ -1,12 +1,4 @@
 import type { APIRoute } from "astro";
-import { config } from "dotenv";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-
-// Load env vars from project root before importing backend modules
-const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(__dirname, "../../../../.env") });
-
 import { getNewestArticles } from "../../../../backend/db/queries.js";
 
 export const GET: APIRoute = async ({ request }) => {

@@ -1,40 +1,30 @@
 import { e as createAstro, f as createComponent, k as renderComponent, r as renderTemplate, m as maybeRenderHead, h as addAttribute, l as renderScript } from '../chunks/astro/server__vZ8gHRi.mjs';
 import 'piccolore';
 import { $ as $$Layout } from '../chunks/Layout_B_UwLs0o.mjs';
+import { f as fetchArticles, a as filterArticlesByPublication } from '../chunks/api_Ds9n8UZi.mjs';
 /* empty css                                 */
 export { renderers } from '../renderers.mjs';
-
-async function fetchArticles(options = {}) {
-  const { limit = 10, offset = 0, baseUrl = "" } = options;
-  const url = new URL("/api/articles", baseUrl || window.location.origin);
-  url.searchParams.set("limit", String(limit));
-  url.searchParams.set("offset", String(offset));
-  const response = await fetch(url.toString());
-  if (!response.ok) {
-    throw new Error(`Failed to fetch articles: ${response.status} ${response.statusText}`);
-  }
-  return response.json();
-}
-function filterArticlesByPublication(articles, publicationId) {
-  return articles.filter(
-    (article) => article.beehiivPublicationId === publicationId
-  );
-}
 
 const $$Astro = createAstro("https://blockstories.com");
 const $$Index = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$Index;
-  const institutionalPubId = "";
-  const cryptoPubId = "";
+  const institutionalPubId = "pub_ea97d244-f74b-49b3-a7c0-17f14829e241";
+  const cryptoPubId = "pub_01715eca-8680-4c80-8348-b34552fe2aaf";
   let institutionalBriefing = null;
   let cryptoBriefing = null;
   {
     const baseUrl = Astro2.url.origin;
     try {
       const result = await fetchArticles({ limit: 20, baseUrl });
-      if (institutionalPubId) ;
-      if (cryptoPubId) ;
+      if (institutionalPubId) {
+        const institutionalArticles = filterArticlesByPublication(result.articles, institutionalPubId);
+        institutionalBriefing = institutionalArticles[0] || null;
+      }
+      if (cryptoPubId) {
+        const cryptoArticles = filterArticlesByPublication(result.articles, cryptoPubId);
+        cryptoBriefing = cryptoArticles[0] || null;
+      }
     } catch (error) {
       console.error("Failed to fetch articles:", error);
     }

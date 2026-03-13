@@ -1,8 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { fetchArticles, filterArticlesByPublication } from '../lib/api.js';
+import { getArticlesByPublication } from '../../../backend/db/queries.js';
 
-const baseUrl = Astro.url.origin;
+const pageStart = performance.now();
+console.log(`[news.astro] Starting render`);
+
 const institutionalPubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
 const cryptoPubId = import.meta.env.BEEHIIV_CRYPTO_PUB_ID || "";
 const activeTab = Astro.url.searchParams.get("tab") || "institutional";
@@ -14,15 +16,19 @@ let hasMore = false;
 
 if (activePubId) {
   try {
-    // Fetch all recent articles and filter by active publication
-    const result = await fetchArticles({ limit: 50, baseUrl });
-    const filteredArticles = filterArticlesByPublication(result.articles, activePubId);
-    articles = filteredArticles.slice(0, 10);
-    hasMore = filteredArticles.length > 10;
+    console.log(`[news.astro] Fetching articles for ${activeTab}...`);
+    const fetchStart = performance.now();
+    const result = await getArticlesByPublication(activePubId, 10);
+    console.log(`[news.astro] Data fetched in ${(performance.now() - fetchStart).toFixed(2)}ms`);
+    articles = result.articles;
+    hasMore = result.hasMore;
   } catch (error) {
-    console.error("Failed to fetch articles:", error);
+    console.error("[news.astro] Failed to fetch articles:", error);
   }
 }
+
+const totalTime = performance.now() - pageStart;
+console.log(`[news.astro] Total SSR time: ${totalTime.toFixed(2)}ms`);
 
 function calculateReadTime(content?: string): number {
   if (!content) return 0;

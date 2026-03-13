@@ -1,6 +1,5 @@
 import { config } from 'dotenv';
-import { dirname, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import { resolve } from 'path';
 import { createClient } from '@libsql/client';
 export { renderers } from '../../renderers.mjs';
 
@@ -98,8 +97,7 @@ async function getNewestArticles(count = 10, offset = 0) {
   return articlesWithPeople;
 }
 
-const __dirname$1 = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(__dirname$1, "../../../../.env") });
+config({ path: resolve(process.cwd(), "../.env") });
 const GET = async ({ request }) => {
   const url = new URL(request.url);
   let limit = 10;
