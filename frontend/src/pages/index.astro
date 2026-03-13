@@ -1,6 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getArticlesByPublication } from '../../../backend/db/queries.js';
+import { getArticlesByPublication, getArticlesByTags } from '../../../backend/db/queries.js';
 
 const pageStart = performance.now();
 console.log(`[index.astro] Starting render`);
@@ -40,6 +40,23 @@ if (!isBuildTime) {
 
 console.log(`[index.astro] Total SSR time: ${(performance.now() - pageStart).toFixed(2)}ms`);
 
+// Fetch Blockstories articles for Market Flow
+let marketFlowArticles: Awaited<ReturnType<typeof getArticlesByTags>> = [];
+
+if (!isBuildTime) {
+  try {
+    marketFlowArticles = await getArticlesByTags(10, ['interview', 'analysis', 'tokenization', 'regulation', 'markets']);
+  } catch (error) {
+    console.error("[index.astro] Failed to fetch Market Flow articles:", error);
+  }
+}
+
+// Helper function to format time from timestamp
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Helper function to calculate read time from content
 function calculateReadTime(content?: string): number {
   if (!content) return 0;
   return Math.ceil(content.trim().split(/\s+/).length / 200);
@@ -58,6 +75,32 @@ function getAuthorRole(index: number, pubId: string): string {
   if (pubId === institutionalPubId) return "Lead Institutional Research";
   if (pubId === cryptoPubId) return "Lead Crypto Research";
   return "Contributor";
+}
+
+// Helper function to map tags to category classes
+function getCategoryClasses(tags: string[]): string {
+  const mappings: Record<string, string> = {
+    'tokenization': 'tokenization',
+    'stablecoin': 'tokenization',
+    'regulation': 'regulation',
+    'mica': 'regulation',
+    'markets': 'markets',
+    'defi': 'markets',
+    'interview': 'blockstories',
+    'analysis': 'blockstories',
+  };
+  const classes = tags.map(tag => mappings[tag.toLowerCase()]).filter(Boolean);
+  return [...new Set(classes)].join(' ');
+}
+
+// Helper function to get the primary tag for display
+function getPrimaryTag(tags: string[]): string | null {
+  const priorityTags = ['interview', 'analysis', 'tokenization', 'regulation', 'markets', 'stablecoin'];
+  for (const priority of priorityTags) {
+    const match = tags.find(t => t.toLowerCase() === priority);
+    if (match) return match.charAt(0).toUpperCase() + match.slice(1);
+  }
+  return tags[0] ? tags[0].charAt(0).toUpperCase() + tags[0].slice(1) : null;
 }
 ---
 
@@ -914,7 +957,7 @@ function getAuthorRole(index: number, pubId: string): string {
         <h2>Market Flow</h2>
       </div>
       <span class="marketflow-header__line"></span>
-      <span class="dateline-date">Saturday, February 15, 2026</span>
+      <span class="dateline-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
     </div>
     <div class="tabs" id="flowTabs">
       <button class="tab on" data-f="latest">Latest</button>
@@ -925,10 +968,30 @@ function getAuthorRole(index: number, pubId: string): string {
     </div>
     <div class="marketflow-grid">
       <ul class="marketflow-list">
-        <li class="marketflow-item marketflow-item--own" data-cat="blockstories tokenization">
-          <div><div class="marketflow-item__time">16:42</div><div class="marketflow-item__source">Blockstories</div></div>
-          <div class="marketflow-item__body"><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="marketflow-item__tag">Interview</span></div>
-        </li>
+        {marketFlowArticles.length > 0 ? (
+          marketFlowArticles.map((article) => {
+            const categoryClasses = getCategoryClasses(article.tags);
+            const primaryTag = getPrimaryTag(article.tags);
+            return (
+              <li class="marketflow-item marketflow-item--own" data-cat={`blockstories ${categoryClasses}`}>
+                <div>
+                  <div class="marketflow-item__time">{formatTime(article.publishDate)}</div>
+                  <div class="marketflow-item__source">Blockstories</div>
+                </div>
+                <div class="marketflow-item__body">
+                  <h3><a href={article.webUrl} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{article.title}</a></h3>
+                  <p>{article.summary || article.subtitle || ''}</p>
+                  {primaryTag && <span class="marketflow-item__tag">{primaryTag}</span>}
+                </div>
+              </li>
+            );
+          })
+        ) : (
+          <li class="marketflow-item marketflow-item--own" data-cat="blockstories tokenization">
+            <div><div class="marketflow-item__time">16:42</div><div class="marketflow-item__source">Blockstories</div></div>
+            <div class="marketflow-item__body"><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="marketflow-item__tag">Interview</span></div>
+          </li>
+        )}
         <li class="marketflow-item" data-cat="markets tokenization">
           <div><div class="marketflow-item__time">15:28</div><div class="marketflow-item__source">Reuters</div></div>
           <div class="marketflow-item__body"><h3>BlackRock expands tokenized money market fund to Polygon network</h3><p>The world's largest asset manager extends its blockchain-native treasury product to a second network.</p></div>
@@ -936,10 +999,6 @@ function getAuthorRole(index: number, pubId: string): string {
         <li class="marketflow-item" data-cat="regulation tokenization">
           <div><div class="marketflow-item__time">14:15</div><div class="marketflow-item__source">Bloomberg</div></div>
           <div class="marketflow-item__body"><h3>ECB digital euro pilot enters phase two with 50 participating banks</h3><p>Central bank digital currency initiative expands scope across eurozone member states.</p></div>
-        </li>
-        <li class="marketflow-item marketflow-item--own" data-cat="blockstories markets">
-          <div><div class="marketflow-item__time">13:40</div><div class="marketflow-item__source">Blockstories</div></div>
-          <div class="marketflow-item__body"><h3>Why European Banks Are Moving Faster Than US Peers on Tokenization</h3><p>MiCA clarity combined with ECB experimentation has created a regulatory environment US institutions now envy.</p><span class="marketflow-item__tag">Analysis</span></div>
         </li>
         <li class="marketflow-item" data-cat="regulation">
           <div><div class="marketflow-item__time">13:03</div><div class="marketflow-item__source">FT</div></div>
@@ -983,7 +1042,7 @@ function getAuthorRole(index: number, pubId: string): string {
         </div>
       </aside>
     </div>
-    <div class="explore"><a href="#">See all market updates <span class="chev">›</span></a></div>
+    <div class="explore"><a href="/news">See all market updates <span class="chev">›</span></a></div>
   </section>
 
   <!-- ═══ 7. SUBSCRIPTION BREAKER ═══ -->
