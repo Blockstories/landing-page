@@ -300,19 +300,19 @@ function getAuthorRole(index: number, pubId: string): string {
 .sdiv a:hover{color:var(--text-1)}
 
 /* ═══ 6. MARKET FLOW ═══ */
-.flow-header{
+.marketflow-header{
   display:flex;align-items:center;gap:14px;
   margin-bottom:var(--sp-m);
 }
-.flow-header .dateline-date{white-space:nowrap}
-.flow-header-line{flex:1;height:1px;background:var(--border)}
-.flow-title-row{display:flex;align-items:center;gap:10px;white-space:nowrap}
-.flow-title-row h2{font-family:var(--serif);font-size:1.4rem;font-weight:400;letter-spacing:-.01em;margin:0}
-.flow-dot{
+.marketflow-header .dateline-date{white-space:nowrap}
+.marketflow-header__line{flex:1;height:1px;background:var(--border)}
+.marketflow-header__title-row{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.marketflow-header__title-row h2{font-family:var(--serif);font-size:1.4rem;font-weight:400;letter-spacing:-.01em;margin:0}
+.marketflow-header__pulse-dot{
   width:8px;height:8px;border-radius:50%;background:var(--text-1);flex-shrink:0;
   box-shadow:0 0 0 0 rgba(0,0,0,.3);animation:pulse-dark 2.5s ease-in-out infinite;
 }
-.flow-sec{margin-bottom:var(--sp-xl)}
+.marketflow-section{margin-bottom:var(--sp-xl)}
 .tabs{display:flex;gap:4px;margin-bottom:var(--sp-m)}
 .tab{
   font-family:var(--mono);font-size:.65rem;letter-spacing:.03em;text-transform:uppercase;
@@ -321,28 +321,28 @@ function getAuthorRole(index: number, pubId: string): string {
 }
 .tab:hover{color:var(--text-2);border-color:var(--border)}
 .tab.on{background:var(--text-1);color:var(--bg);border-color:var(--text-1)}
-.flow-grid{display:grid;grid-template-columns:1fr 340px;gap:0}
-.flow-list{list-style:none;border-right:1px solid var(--border);padding-right:28px}
-.fi{
+.marketflow-grid{display:grid;grid-template-columns:1fr 340px;gap:0}
+.marketflow-list{list-style:none;border-right:1px solid var(--border);padding-right:28px}
+.marketflow-item{
   display:grid;grid-template-columns:64px 1fr;gap:18px;
   padding:16px 0;border-bottom:1px solid var(--border-light);cursor:pointer;
   transition:background var(--ease);
 }
-.fi:hover{background:rgba(0,0,0,.01)}
-.fi-time{font-family:var(--mono);font-size:.65rem;color:var(--text-3);padding-top:2px}
-.fi-src{font-family:var(--mono);font-size:.5rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
-.fi-body h3{font-size:.9rem;font-weight:500;line-height:1.45;margin-bottom:3px}
-.fi-body p{font-size:.78rem;line-height:1.55;color:var(--text-2)}
-.fi-tag{
+.marketflow-item:hover{background:rgba(0,0,0,.01)}
+.marketflow-item__time{font-family:var(--mono);font-size:.65rem;color:var(--text-3);padding-top:2px}
+.marketflow-item__source{font-family:var(--mono);font-size:.5rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
+.marketflow-item__body h3{font-size:.9rem;font-weight:500;line-height:1.45;margin-bottom:3px}
+.marketflow-item__body p{font-size:.78rem;line-height:1.55;color:var(--text-2)}
+.marketflow-item__tag{
   display:inline-block;margin-top:7px;font-family:var(--mono);font-size:.5rem;
   letter-spacing:.06em;text-transform:uppercase;color:var(--accent);
   background:var(--accent-light);padding:2px 7px;border-radius:2px;
 }
-.fi.own{
+.marketflow-item--own{
   background:var(--accent-light);border-left:2px solid var(--accent);
   padding-left:16px;margin-left:-18px;padding-right:18px;border-radius:0 4px 4px 0;
 }
-.fi.own .fi-src{color:var(--accent)}
+.marketflow-item--own .marketflow-item__source{color:var(--accent)}
 .sidebar{padding-left:28px}
 .sidebar-sec{margin-bottom:28px}
 .sidebar-sec h4{
@@ -631,8 +631,8 @@ function getAuthorRole(index: number, pubId: string): string {
   .sf-sec:nth-child(odd){border-right:none}
   .briefing-featured{flex-direction:column;align-items:flex-start;gap:14px}
   .briefing-featured-row{flex-wrap:wrap}
-  .flow-grid{grid-template-columns:1fr}
-  .flow-list{border-right:none;padding-right:0}
+  .marketflow-grid{grid-template-columns:1fr}
+  .marketflow-list{border-right:none;padding-right:0}
   .sidebar{padding-left:0;padding-top:28px;border-top:1px solid var(--border)}
   .ed-feat{grid-template-columns:1fr}
   .ef-vis{min-height:200px}
@@ -679,7 +679,7 @@ function getAuthorRole(index: number, pubId: string): string {
   .nav{display:none}
   .fl-stats{flex-direction:column;gap:14px}
   .fl-ctas{flex-direction:column}
-  .fi{grid-template-columns:52px 1fr;gap:12px}
+  .marketflow-item{grid-template-columns:52px 1fr;gap:12px}
 }
 </style>
 
@@ -907,13 +907,13 @@ function getAuthorRole(index: number, pubId: string): string {
   )}
 
   <!-- ═══ 6. MARKET FLOW ═══ -->
-  <section class="flow-sec reveal" id="flow">
-    <div class="flow-header">
-      <div class="flow-title-row">
-        <span class="flow-dot"></span>
+  <section class="marketflow-section reveal" id="flow">
+    <div class="marketflow-header">
+      <div class="marketflow-header__title-row">
+        <span class="marketflow-header__pulse-dot"></span>
         <h2>Market Flow</h2>
       </div>
-      <span class="flow-header-line"></span>
+      <span class="marketflow-header__line"></span>
       <span class="dateline-date">Saturday, February 15, 2026</span>
     </div>
     <div class="tabs" id="flowTabs">
@@ -923,43 +923,43 @@ function getAuthorRole(index: number, pubId: string): string {
       <button class="tab" data-f="regulation">Regulation</button>
       <button class="tab" data-f="markets">Markets</button>
     </div>
-    <div class="flow-grid">
-      <ul class="flow-list">
-        <li class="fi own" data-cat="blockstories tokenization">
-          <div><div class="fi-time">16:42</div><div class="fi-src">Blockstories</div></div>
-          <div class="fi-body"><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="fi-tag">Interview</span></div>
+    <div class="marketflow-grid">
+      <ul class="marketflow-list">
+        <li class="marketflow-item marketflow-item--own" data-cat="blockstories tokenization">
+          <div><div class="marketflow-item__time">16:42</div><div class="marketflow-item__source">Blockstories</div></div>
+          <div class="marketflow-item__body"><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="marketflow-item__tag">Interview</span></div>
         </li>
-        <li class="fi" data-cat="markets tokenization">
-          <div><div class="fi-time">15:28</div><div class="fi-src">Reuters</div></div>
-          <div class="fi-body"><h3>BlackRock expands tokenized money market fund to Polygon network</h3><p>The world's largest asset manager extends its blockchain-native treasury product to a second network.</p></div>
+        <li class="marketflow-item" data-cat="markets tokenization">
+          <div><div class="marketflow-item__time">15:28</div><div class="marketflow-item__source">Reuters</div></div>
+          <div class="marketflow-item__body"><h3>BlackRock expands tokenized money market fund to Polygon network</h3><p>The world's largest asset manager extends its blockchain-native treasury product to a second network.</p></div>
         </li>
-        <li class="fi" data-cat="regulation tokenization">
-          <div><div class="fi-time">14:15</div><div class="fi-src">Bloomberg</div></div>
-          <div class="fi-body"><h3>ECB digital euro pilot enters phase two with 50 participating banks</h3><p>Central bank digital currency initiative expands scope across eurozone member states.</p></div>
+        <li class="marketflow-item" data-cat="regulation tokenization">
+          <div><div class="marketflow-item__time">14:15</div><div class="marketflow-item__source">Bloomberg</div></div>
+          <div class="marketflow-item__body"><h3>ECB digital euro pilot enters phase two with 50 participating banks</h3><p>Central bank digital currency initiative expands scope across eurozone member states.</p></div>
         </li>
-        <li class="fi own" data-cat="blockstories markets">
-          <div><div class="fi-time">13:40</div><div class="fi-src">Blockstories</div></div>
-          <div class="fi-body"><h3>Why European Banks Are Moving Faster Than US Peers on Tokenization</h3><p>MiCA clarity combined with ECB experimentation has created a regulatory environment US institutions now envy.</p><span class="fi-tag">Analysis</span></div>
+        <li class="marketflow-item marketflow-item--own" data-cat="blockstories markets">
+          <div><div class="marketflow-item__time">13:40</div><div class="marketflow-item__source">Blockstories</div></div>
+          <div class="marketflow-item__body"><h3>Why European Banks Are Moving Faster Than US Peers on Tokenization</h3><p>MiCA clarity combined with ECB experimentation has created a regulatory environment US institutions now envy.</p><span class="marketflow-item__tag">Analysis</span></div>
         </li>
-        <li class="fi" data-cat="regulation">
-          <div><div class="fi-time">13:03</div><div class="fi-src">FT</div></div>
-          <div class="fi-body"><h3>Singapore MAS releases updated stablecoin regulatory framework</h3><p>New rules establish reserve requirements and disclosure standards for stablecoin issuers.</p></div>
+        <li class="marketflow-item" data-cat="regulation">
+          <div><div class="marketflow-item__time">13:03</div><div class="marketflow-item__source">FT</div></div>
+          <div class="marketflow-item__body"><h3>Singapore MAS releases updated stablecoin regulatory framework</h3><p>New rules establish reserve requirements and disclosure standards for stablecoin issuers.</p></div>
         </li>
-        <li class="fi" data-cat="markets">
-          <div><div class="fi-time">11:56</div><div class="fi-src">CoinDesk</div></div>
-          <div class="fi-body"><h3>CME Group to launch Solana futures contracts in March</h3><p>Regulated derivatives venue expands digital asset offering beyond Bitcoin and Ethereum.</p></div>
+        <li class="marketflow-item" data-cat="markets">
+          <div><div class="marketflow-item__time">11:56</div><div class="marketflow-item__source">CoinDesk</div></div>
+          <div class="marketflow-item__body"><h3>CME Group to launch Solana futures contracts in March</h3><p>Regulated derivatives venue expands digital asset offering beyond Bitcoin and Ethereum.</p></div>
         </li>
-        <li class="fi" data-cat="tokenization">
-          <div><div class="fi-time">10:42</div><div class="fi-src">Handelsblatt</div></div>
-          <div class="fi-body"><h3>Commerzbank's crypto subsidiary processes first institutional trade</h3><p>German banking giant enters active digital asset trading through newly licensed entity.</p></div>
+        <li class="marketflow-item" data-cat="tokenization">
+          <div><div class="marketflow-item__time">10:42</div><div class="marketflow-item__source">Handelsblatt</div></div>
+          <div class="marketflow-item__body"><h3>Commerzbank's crypto subsidiary processes first institutional trade</h3><p>German banking giant enters active digital asset trading through newly licensed entity.</p></div>
         </li>
-        <li class="fi" data-cat="regulation markets">
-          <div><div class="fi-time">09:58</div><div class="fi-src">ECB</div></div>
-          <div class="fi-body"><h3>ECB publishes new framework for digital asset reserve holdings</h3><p>Updated guidance outlines how eurozone banks can classify and report digital asset positions on balance sheets.</p></div>
+        <li class="marketflow-item" data-cat="regulation markets">
+          <div><div class="marketflow-item__time">09:58</div><div class="marketflow-item__source">ECB</div></div>
+          <div class="marketflow-item__body"><h3>ECB publishes new framework for digital asset reserve holdings</h3><p>Updated guidance outlines how eurozone banks can classify and report digital asset positions on balance sheets.</p></div>
         </li>
-        <li class="fi" data-cat="markets">
-          <div><div class="fi-time">09:14</div><div class="fi-src">The Block</div></div>
-          <div class="fi-body"><h3>Tokenized US Treasury products surpass $4B in total AUM</h3><p>Institutional demand for on-chain government bonds continues to accelerate across multiple issuers.</p></div>
+        <li class="marketflow-item" data-cat="markets">
+          <div><div class="marketflow-item__time">09:14</div><div class="marketflow-item__source">The Block</div></div>
+          <div class="marketflow-item__body"><h3>Tokenized US Treasury products surpass $4B in total AUM</h3><p>Institutional demand for on-chain government bonds continues to accelerate across multiple issuers.</p></div>
         </li>
       </ul>
       <aside class="sidebar">
@@ -1183,7 +1183,7 @@ clocks();setInterval(clocks,30000);
 // ═══ Market Flow Tabs ═══
 const flowTabs=document.getElementById('flowTabs');
 if(flowTabs){
-  const items=document.querySelectorAll('.flow-list .fi');
+  const items=document.querySelectorAll('.marketflow-list .marketflow-item');
   flowTabs.querySelectorAll('.tab').forEach(t=>{
     t.addEventListener('click',()=>{
       flowTabs.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
@@ -1191,7 +1191,7 @@ if(flowTabs){
       const f=t.dataset.f;
       items.forEach(i=>{
         const cats=(i.dataset.cat||'').split(' ');
-        const own=i.classList.contains('own');
+        const own=i.classList.contains('marketflow-item--own');
         if(f==='latest')i.style.display=own?'none':'';
         else if(f==='blockstories')i.style.display=own?'':'none';
         else i.style.display=cats.includes(f)&&!own?'':'none';
