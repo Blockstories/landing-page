@@ -218,17 +218,19 @@ describe("createArticle", () => {
       .mockResolvedValueOnce({ rows: [] } as any)  // 1. INSERT article
       .mockResolvedValueOnce({ rows: [mockInsertedRow] } as any)  // 2. SELECT by pub/post (getArticleByPublicationIdAndPostId)
       .mockResolvedValueOnce({ rows: [] } as any)  // 3. SELECT people (getPeopleForArticle called by getArticleByPublicationIdAndPostId)
-      .mockResolvedValueOnce({ rows: [] } as any)  // 4. INSERT author 1
-      .mockResolvedValueOnce({ rows: [] } as any)  // 5. INSERT author 2
-      .mockResolvedValueOnce({ rows: [mockInsertedRow] } as any)  // 6. SELECT by id (getArticleById)
-      .mockResolvedValueOnce({ rows: [] } as any); // 7. SELECT people (getPeopleForArticle called by getArticleById)
+      .mockResolvedValueOnce({ rows: [] } as any)  // 4. INSERT tag "crypto"
+      .mockResolvedValueOnce({ rows: [] } as any)  // 5. INSERT tag "news"
+      .mockResolvedValueOnce({ rows: [] } as any)  // 6. INSERT author 1
+      .mockResolvedValueOnce({ rows: [] } as any)  // 7. INSERT author 2
+      .mockResolvedValueOnce({ rows: [mockInsertedRow] } as any)  // 8. SELECT by id (getArticleById)
+      .mockResolvedValueOnce({ rows: [] } as any); // 9. SELECT people (getPeopleForArticle called by getArticleById)
 
     const result = await createArticle(newArticle, [
       { personId: 1, role: "author" },
       { personId: 2, role: "author" }
     ]);
 
-    expect(mockExecute).toHaveBeenCalledTimes(7);
+    expect(mockExecute).toHaveBeenCalledTimes(9);
     expect(result.id).toBe(100);
     expect(result.title).toBe("New Article");
     expect(result.authors).toEqual([]);

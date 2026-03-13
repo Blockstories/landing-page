@@ -113,36 +113,40 @@ export async function getNewestArticles(count: number = 10, offset: number = 0):
     if (cached) return cached;
   }
 
-  // Single query to get articles with all their people via JOIN
+  // Single query to get articles with all their people and tags via JOIN
   const result = await db.execute(
     `SELECT
        a.*,
        p.id as person_id, p.name, p.slug, p.image_url, p.company,
-       ap.role
+       ap.role,
+       at.tag
      FROM articles a
      LEFT JOIN article_people ap ON a.id = ap.article_id
      LEFT JOIN people p ON ap.person_id = p.id
+     LEFT JOIN article_tags at ON a.id = at.article_id
      ORDER BY a.publish_date DESC, a.id DESC
      LIMIT ? OFFSET ?`,
     [count, offset]
   );
 
-  // Group rows by article and collect people
-  const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured">; people: Array<{ person: Person; role: ArticleRole }> }>();
+  // Group rows by article and collect people and tags
+  const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured" | "tags">; people: Array<{ person: Person; role: ArticleRole }>; tags: Set<string> }>();
 
   for (const row of result.rows) {
     const articleId = row.id as number;
 
     if (!articleMap.has(articleId)) {
       articleMap.set(articleId, {
-        article: mapRowToArticle(row),
-        people: []
+        article: mapRowToArticle({ ...row, tags: [] }),
+        people: [],
+        tags: new Set()
       });
     }
 
+    const entry = articleMap.get(articleId)!;
+
     // If there's a person (LEFT JOIN may return nulls)
     if (row.person_id) {
-      const entry = articleMap.get(articleId)!;
       entry.people.push({
         person: mapRowToPerson({
           id: row.person_id,
@@ -154,11 +158,17 @@ export async function getNewestArticles(count: number = 10, offset: number = 0):
         role: row.role as ArticleRole
       });
     }
+
+    // If there's a tag (LEFT JOIN may return nulls)
+    const tag = row.tag as string | undefined;
+    if (tag) {
+      entry.tags.add(tag);
+    }
   }
 
-  // Convert map to array of complete articles
-  const articles = Array.from(articleMap.values()).map(({ article, people }) =>
-    combineArticleWithPeople(article, people)
+  // Convert map to array of complete articles with tags
+  const articles = Array.from(articleMap.values()).map(({ article, people, tags }) =>
+    combineArticleWithPeople({ ...article, tags: Array.from(tags) }, people)
   );
 
   if (cacheKey) {
@@ -170,7 +180,7 @@ export async function getNewestArticles(count: number = 10, offset: number = 0):
 
 /**
  * Get articles by tags with their people
- * Uses a single JOIN query to avoid N+1 problem
+ * Uses the article_tags junction table with proper indexes for fast lookups
  * Only returns confirmed articles
  * Results are cached for performance
  * @param count - Number of articles to fetch (default: 10)
@@ -186,29 +196,40 @@ export async function getArticlesByTags(
   const cached = getCached<Article[]>(cacheKey);
   if (cached) return cached;
 
-  // Build query with optional tag filtering
-  let query = `SELECT
-    a.*,
-    p.id as person_id, p.name, p.slug, p.image_url, p.company,
-    ap.role
-  FROM articles a
-  LEFT JOIN article_people ap ON a.id = ap.article_id
-  LEFT JOIN people p ON ap.person_id = p.id
-  WHERE a.status = 'confirmed'`;
-  const params: (string | number)[] = [];
+  let result;
 
-  // Add tag filtering if tags are provided (OR logic - match ANY tag)
   if (tags && tags.length > 0) {
-    const tagConditions = tags.map(() => `json_extract(a.tags, '$') LIKE ?`).join(" OR ");
-    query += ` AND (${tagConditions})`;
-    // Each tag is wrapped in quotes for JSON array matching
-    tags.forEach((tag) => params.push(`%"${tag}"%`));
+    // Use indexed article_tags table for efficient tag filtering
+    const tagPlaceholders = tags.map(() => "?").join(", ");
+    const query = `SELECT
+      a.*,
+      p.id as person_id, p.name, p.slug, p.image_url, p.company,
+      ap.role
+    FROM articles a
+    INNER JOIN article_tags at ON a.id = at.article_id
+    LEFT JOIN article_people ap ON a.id = ap.article_id
+    LEFT JOIN people p ON ap.person_id = p.id
+    WHERE a.status = 'confirmed'
+      AND at.tag IN (${tagPlaceholders})
+    ORDER BY a.publish_date DESC, a.id DESC
+    LIMIT ?`;
+
+    result = await db.execute(query, [...tags, count]);
+  } else {
+    // No tags filter - fetch all confirmed articles
+    const query = `SELECT
+      a.*,
+      p.id as person_id, p.name, p.slug, p.image_url, p.company,
+      ap.role
+    FROM articles a
+    LEFT JOIN article_people ap ON a.id = ap.article_id
+    LEFT JOIN people p ON ap.person_id = p.id
+    WHERE a.status = 'confirmed'
+    ORDER BY a.publish_date DESC, a.id DESC
+    LIMIT ?`;
+
+    result = await db.execute(query, [count]);
   }
-
-  query += ` ORDER BY a.publish_date DESC, a.id DESC LIMIT ?`;
-  params.push(count);
-
-  const result = await db.execute(query, params);
 
   // Group rows by article and collect people
   const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured">; people: Array<{ person: Person; role: ArticleRole }> }>();
@@ -250,38 +271,72 @@ export async function getArticlesByTags(
 }
 
 /**
+ * Helper to collect tags from rows for single article queries
+ */
+function collectTagsFromRows(rows: unknown[]): string[] {
+  const tags = new Set<string>();
+  for (const row of rows) {
+    const tag = (row as { tag?: string }).tag;
+    if (tag) tags.add(tag);
+  }
+  return Array.from(tags);
+}
+
+/**
  * Get single article by publication + post ID
+ * Fetches tags via JOIN with article_tags table
  */
 export async function getArticleByPublicationIdAndPostId(
   publicationId: string,
   postId: string
 ): Promise<Article | null> {
   const result = await db.execute(
-    "SELECT * FROM articles WHERE beehiiv_publication_id = ? AND beehiiv_post_id = ?",
+    `SELECT
+      a.*,
+      at.tag
+    FROM articles a
+    LEFT JOIN article_tags at ON a.id = at.article_id
+    WHERE a.beehiiv_publication_id = ? AND a.beehiiv_post_id = ?`,
     [publicationId, postId]
   );
 
-  const row = result.rows[0];
-  if (!row) return null;
+  if (result.rows.length === 0) return null;
 
-  const article = mapRowToArticle(row);
+  // Collect tags from all rows (since LEFT JOIN can return multiple rows for tags)
+  const tags = collectTagsFromRows(result.rows);
+
+  // Use first row for article data, attach collected tags
+  const firstRow = result.rows[0];
+  const article = mapRowToArticle({ ...firstRow, tags });
+
   const people = await getPeopleForArticle(article.id);
   return combineArticleWithPeople(article, people);
 }
 
 /**
  * Get single article by ID
+ * Fetches tags via JOIN with article_tags table
  */
 export async function getArticleById(id: number): Promise<Article | null> {
   const result = await db.execute(
-    "SELECT * FROM articles WHERE id = ?",
+    `SELECT
+      a.*,
+      at.tag
+    FROM articles a
+    LEFT JOIN article_tags at ON a.id = at.article_id
+    WHERE a.id = ?`,
     [id]
   );
 
-  const row = result.rows[0];
-  if (!row) return null;
+  if (result.rows.length === 0) return null;
 
-  const article = mapRowToArticle(row);
+  // Collect tags from all rows (since LEFT JOIN can return multiple rows for tags)
+  const tags = collectTagsFromRows(result.rows);
+
+  // Use first row for article data, attach collected tags
+  const firstRow = result.rows[0];
+  const article = mapRowToArticle({ ...firstRow, tags });
+
   const people = await getPeopleForArticle(article.id);
   return combineArticleWithPeople(article, people);
 }
@@ -293,11 +348,11 @@ export async function createArticle(
   article: Omit<Article, "id">,
   people: Array<{ personId: number; role: ArticleRole }> = []
 ): Promise<Article> {
-  // Insert article
+  // Insert article (tags stored separately in article_tags table)
   await db.execute(
     `INSERT INTO articles
-      (beehiiv_post_id, beehiiv_publication_id, title, subtitle, publish_date, status, tags, thumbnail_url, web_url, summary, content)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (beehiiv_post_id, beehiiv_publication_id, title, subtitle, publish_date, status, thumbnail_url, web_url, summary, content)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       article.beehiivPostId,
       article.beehiivPublicationId,
@@ -305,7 +360,6 @@ export async function createArticle(
       article.subtitle ?? null,
       article.publishDate,
       article.status,
-      JSON.stringify(article.tags),
       article.thumbnailUrl ?? null,
       article.webUrl ?? null,
       article.summary || null,
@@ -316,6 +370,16 @@ export async function createArticle(
   // Get the newly created article
   const saved = await getArticleByPublicationIdAndPostId(article.beehiivPublicationId, article.beehiivPostId);
   if (!saved) throw new Error("Failed to retrieve newly inserted article");
+
+  // Insert tags into normalized article_tags table
+  if (article.tags.length > 0) {
+    for (const tag of article.tags) {
+      await db.execute(
+        "INSERT OR IGNORE INTO article_tags (article_id, tag) VALUES (?, ?)",
+        [saved.id, tag]
+      );
+    }
+  }
 
   // Insert people relations
   if (people.length > 0) {
@@ -373,6 +437,19 @@ export async function updateArticleSummary(
 }
 
 /**
+ * Update article short summary
+ */
+export async function updateArticleShortSummary(
+  articleId: number,
+  shortSummary: string
+): Promise<void> {
+  await db.execute(
+    "UPDATE articles SET short_summary = ? WHERE id = ?",
+    [shortSummary, articleId]
+  );
+}
+
+/**
  * Add person to article
  */
 export async function addPersonToArticle(
@@ -402,14 +479,19 @@ export async function removePersonFromArticle(
 
 /**
  * Get articles by person (as author or featured)
+ * Fetches tags via JOIN with article_tags table
  */
 export async function getArticlesByPerson(
   personId: number,
   role?: ArticleRole
 ): Promise<Article[]> {
-  let query = `SELECT a.* FROM articles a
-               JOIN article_people ap ON a.id = ap.article_id
-               WHERE ap.person_id = ?`;
+  let query = `SELECT
+      a.*,
+      at.tag
+    FROM articles a
+    JOIN article_people ap ON a.id = ap.article_id
+    LEFT JOIN article_tags at ON a.id = at.article_id
+    WHERE ap.person_id = ?`;
   const params: (number | string)[] = [personId];
 
   if (role) {
@@ -420,7 +502,31 @@ export async function getArticlesByPerson(
   query += " ORDER BY a.publish_date DESC";
 
   const result = await db.execute(query, params);
-  const articles = result.rows.map(mapRowToArticle);
+
+  // Group rows by article and collect tags
+  const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured" | "tags">; tags: Set<string> }>();
+
+  for (const row of result.rows) {
+    const articleId = row.id as number;
+
+    if (!articleMap.has(articleId)) {
+      articleMap.set(articleId, {
+        article: mapRowToArticle({ ...row, tags: [] }),
+        tags: new Set()
+      });
+    }
+
+    const tag = row.tag as string | undefined;
+    if (tag) {
+      articleMap.get(articleId)!.tags.add(tag);
+    }
+  }
+
+  // Convert to articles with tags
+  const articles = Array.from(articleMap.values()).map(({ article, tags }) => ({
+    ...article,
+    tags: Array.from(tags)
+  }));
 
   // Fetch people for each article
   const articlesWithPeople = await Promise.all(
@@ -527,14 +633,16 @@ export async function getArticlesByPublication(
     if (cached) return cached;
   }
 
-  // Build query with optional cursor filter and JOIN for people
+  // Build query with optional cursor filter and JOIN for people and tags
   let query = `SELECT
     a.*,
     p.id as person_id, p.name, p.slug, p.image_url, p.company,
-    ap.role
+    ap.role,
+    at.tag
   FROM articles a
   LEFT JOIN article_people ap ON a.id = ap.article_id
   LEFT JOIN people p ON ap.person_id = p.id
+  LEFT JOIN article_tags at ON a.id = at.article_id
   WHERE a.beehiiv_publication_id = ?`;
   const params: (string | number)[] = [publicationId];
 
@@ -554,22 +662,24 @@ export async function getArticlesByPublication(
   // Check if there are more results
   const hasMore = rows.length > limit;
 
-  // Group rows by article and collect people
-  const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured">; people: Array<{ person: Person; role: ArticleRole }> }>();
+  // Group rows by article and collect people and tags
+  const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured" | "tags">; people: Array<{ person: Person; role: ArticleRole }>; tags: Set<string> }>();
 
   for (const row of rows) {
     const articleId = row.id as number;
 
     if (!articleMap.has(articleId)) {
       articleMap.set(articleId, {
-        article: mapRowToArticle(row),
-        people: []
+        article: mapRowToArticle({ ...row, tags: [] }),
+        people: [],
+        tags: new Set()
       });
     }
 
+    const entry = articleMap.get(articleId)!;
+
     // If there's a person (LEFT JOIN may return nulls)
     if (row.person_id) {
-      const entry = articleMap.get(articleId)!;
       entry.people.push({
         person: mapRowToPerson({
           id: row.person_id,
@@ -581,15 +691,21 @@ export async function getArticlesByPublication(
         role: row.role as ArticleRole
       });
     }
+
+    // If there's a tag (LEFT JOIN may return nulls)
+    const tag = row.tag as string | undefined;
+    if (tag) {
+      entry.tags.add(tag);
+    }
   }
 
   // Remove the extra row if we fetched one
   const articleEntries = Array.from(articleMap.values());
   const limitedEntries = hasMore ? articleEntries.slice(0, limit) : articleEntries;
 
-  // Convert to final articles
-  const articlesWithPeople = limitedEntries.map(({ article, people }) =>
-    combineArticleWithPeople(article, people)
+  // Convert to final articles with tags
+  const articlesWithPeople = limitedEntries.map(({ article, people, tags }) =>
+    combineArticleWithPeople({ ...article, tags: Array.from(tags) }, people)
   );
 
   // Generate next cursor if there are more results

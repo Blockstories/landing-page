@@ -16,6 +16,7 @@ export interface Article {
   thumbnailUrl?: string;
   webUrl?: string;
   summary?: string;
+  shortSummary?: string;
   content?: string;
 }
 

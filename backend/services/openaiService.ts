@@ -19,6 +19,23 @@ export async function summarizeArticle(articleText: string): Promise<string> {
   return summary;
 }
 
+/**
+ * Generate a one-sentence mini summary from an existing article summary.
+ */
+export async function generateShortSummary(summary: string): Promise<string> {
+  const prompt = loadPrompt("article-short-summary");
+  const filledPrompt = fillPrompt(prompt.template, { summary });
+
+  const shortSummary = await generateText({
+    model: prompt.model,
+    prompt: filledPrompt,
+    temperature: prompt.temperature,
+    maxTokens: prompt.maxTokens,
+  });
+
+  return shortSummary;
+}
+
 // Test function for development
 async function testSummarizeArticle() {
   console.log("Testing Article Summarization...\n");

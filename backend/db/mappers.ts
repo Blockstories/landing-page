@@ -6,8 +6,23 @@ export type RowLike = Row | Record<string, unknown>;
 
 /**
  * Map database row to Article object (without people - attach separately)
+ * Tags should be provided as string[] in row.tags (not JSON string)
  */
 export function mapRowToArticle(row: RowLike): Omit<Article, "authors" | "featured"> {
+  // Handle tags: can be string[] (from JOIN), JSON string (legacy), or null
+  let tags: string[] = [];
+  if (row.tags) {
+    if (Array.isArray(row.tags)) {
+      tags = row.tags as string[];
+    } else if (typeof row.tags === "string") {
+      try {
+        tags = JSON.parse(row.tags);
+      } catch {
+        tags = [];
+      }
+    }
+  }
+
   return {
     id: row.id as number,
     beehiivPostId: row.beehiiv_post_id as string,
@@ -16,10 +31,11 @@ export function mapRowToArticle(row: RowLike): Omit<Article, "authors" | "featur
     subtitle: row.subtitle as string | undefined ?? undefined,
     publishDate: row.publish_date as number,
     status: row.status as Article["status"],
-    tags: row.tags ? JSON.parse(row.tags as string) : [],
+    tags,
     thumbnailUrl: row.thumbnail_url as string | undefined ?? undefined,
     webUrl: row.web_url as string | undefined ?? undefined,
     summary: row.summary as string | undefined ?? undefined,
+    shortSummary: row.short_summary as string | undefined ?? undefined,
     content: row.content as string | undefined ?? undefined,
   };
 }

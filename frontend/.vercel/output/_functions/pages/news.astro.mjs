@@ -1,7 +1,7 @@
-import { e as createAstro, f as createComponent, k as renderComponent, r as renderTemplate, m as maybeRenderHead, h as addAttribute, l as renderScript } from '../chunks/astro/server__vZ8gHRi.mjs';
+import { e as createAstro, f as createComponent, k as renderComponent, r as renderTemplate, m as maybeRenderHead, h as addAttribute, l as renderScript } from '../chunks/astro/server_s_qG7lfK.mjs';
 import 'piccolore';
-import { $ as $$Layout } from '../chunks/Layout_B_UwLs0o.mjs';
-import { f as fetchArticles, a as filterArticlesByPublication } from '../chunks/api_Ds9n8UZi.mjs';
+import { $ as $$Layout } from '../chunks/Layout_DYoj6jL_.mjs';
+import { a as getArticlesByPublication } from '../chunks/queries_DsUH77Mu.mjs';
 /* empty css                                */
 export { renderers } from '../renderers.mjs';
 
@@ -9,7 +9,8 @@ const $$Astro = createAstro("https://blockstories.com");
 const $$News = createComponent(async ($$result, $$props, $$slots) => {
   const Astro2 = $$result.createAstro($$Astro, $$props, $$slots);
   Astro2.self = $$News;
-  const baseUrl = Astro2.url.origin;
+  const pageStart = performance.now();
+  console.log(`[news.astro] Starting render`);
   const institutionalPubId = "pub_ea97d244-f74b-49b3-a7c0-17f14829e241";
   const cryptoPubId = "pub_01715eca-8680-4c80-8348-b34552fe2aaf";
   const activeTab = Astro2.url.searchParams.get("tab") || "institutional";
@@ -18,14 +19,18 @@ const $$News = createComponent(async ($$result, $$props, $$slots) => {
   let hasMore = false;
   {
     try {
-      const result = await fetchArticles({ limit: 50, baseUrl });
-      const filteredArticles = filterArticlesByPublication(result.articles, activePubId);
-      articles = filteredArticles.slice(0, 10);
-      hasMore = filteredArticles.length > 10;
+      console.log(`[news.astro] Fetching articles for ${activeTab}...`);
+      const fetchStart = performance.now();
+      const result = await getArticlesByPublication(activePubId, 10);
+      console.log(`[news.astro] Data fetched in ${(performance.now() - fetchStart).toFixed(2)}ms`);
+      articles = result.articles;
+      hasMore = result.hasMore;
     } catch (error) {
-      console.error("Failed to fetch articles:", error);
+      console.error("[news.astro] Failed to fetch articles:", error);
     }
   }
+  const totalTime = performance.now() - pageStart;
+  console.log(`[news.astro] Total SSR time: ${totalTime.toFixed(2)}ms`);
   function calculateReadTime(content) {
     if (!content) return 0;
     return Math.ceil(content.trim().split(/\s+/).length / 200);

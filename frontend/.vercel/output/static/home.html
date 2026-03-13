@@ -1,137 +1,67 @@
----
-import Layout from '../layouts/Layout.astro';
-import { getArticlesByPublication, getArticlesByTags } from '../../../backend/db/queries.js';
-
-const pageStart = performance.now();
-console.log(`[index.astro] Starting render`);
-
-const institutionalPubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
-const cryptoPubId = import.meta.env.BEEHIIV_CRYPTO_PUB_ID || "";
-
-let institutionalBriefing = null;
-let cryptoBriefing = null;
-
-// Only fetch data during SSR (not during static build)
-const isBuildTime = import.meta.env.MODE === "production" && !import.meta.env.SSR;
-
-if (!isBuildTime) {
-  try {
-    // Direct database queries - no HTTP overhead
-    // Fetch latest article from each publication
-    if (institutionalPubId) {
-      console.log(`[index.astro] Fetching institutional...`);
-      const start1 = performance.now();
-      const institutionalResult = await getArticlesByPublication(institutionalPubId, 1);
-      console.log(`[index.astro] Institutional fetched in ${(performance.now() - start1).toFixed(2)}ms`);
-      institutionalBriefing = institutionalResult.articles[0] || null;
-    }
-
-    if (cryptoPubId) {
-      console.log(`[index.astro] Fetching crypto...`);
-      const start2 = performance.now();
-      const cryptoResult = await getArticlesByPublication(cryptoPubId, 1);
-      console.log(`[index.astro] Crypto fetched in ${(performance.now() - start2).toFixed(2)}ms`);
-      cryptoBriefing = cryptoResult.articles[0] || null;
-    }
-  } catch (error) {
-    console.error("[index.astro] Failed to fetch articles:", error);
-  }
-}
-
-console.log(`[index.astro] Total SSR time: ${(performance.now() - pageStart).toFixed(2)}ms`);
-
-// Fetch Blockstories articles for Market Flow
-let marketFlowArticles: Awaited<ReturnType<typeof getArticlesByTags>> = [];
-
-if (!isBuildTime) {
-  try {
-    marketFlowArticles = await getArticlesByTags(10, ['interview', 'analysis', 'tokenization', 'regulation', 'markets']);
-  } catch (error) {
-    console.error("[index.astro] Failed to fetch Market Flow articles:", error);
-  }
-}
-
-// Fetch articles for Reporting & Analysis section
-let featuredReport: Awaited<ReturnType<typeof getArticlesByTags>>[number] | null = null;
-let highlightArticles: Awaited<ReturnType<typeof getArticlesByTags>> = [];
-let interviewArticles: Awaited<ReturnType<typeof getArticlesByTags>> = [];
-let analysisArticles: Awaited<ReturnType<typeof getArticlesByTags>> = [];
-
-if (!isBuildTime) {
-  try {
-    // Fetch featured report (most recent with "featured report" tag)
-    const featuredReports = await getArticlesByTags(1, ['featured report']);
-    featuredReport = featuredReports[0] || null;
-
-    // Fetch highlight articles (3 most recent with "highlight" tag)
-    highlightArticles = await getArticlesByTags(3, ['highlight']);
-
-    // Fetch interview articles
-    interviewArticles = await getArticlesByTags(10, ['interview']);
-
-    // Fetch analysis articles
-    analysisArticles = await getArticlesByTags(10, ['analysis']);
-  } catch (error) {
-    console.error("[index.astro] Failed to fetch Reporting & Analysis articles:", error);
-  }
-}
-
-// Helper function to format time from timestamp
-function formatTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-// Helper function to calculate read time from content
-function calculateReadTime(content?: string): number {
-  if (!content) return 0;
-  return Math.ceil(content.trim().split(/\s+/).length / 200);
-}
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
-}
-
-function getAuthorRole(index: number, pubId: string): string {
-  if (index !== 0) return "Contributor";
-  if (pubId === institutionalPubId) return "Lead Institutional Research";
-  if (pubId === cryptoPubId) return "Lead Crypto Research";
-  return "Contributor";
-}
-
-// Helper function to map tags to category classes
-function getCategoryClasses(tags: string[]): string {
-  const mappings: Record<string, string> = {
-    'tokenization': 'tokenization',
-    'stablecoin': 'tokenization',
-    'regulation': 'regulation',
-    'mica': 'regulation',
-    'markets': 'markets',
-    'defi': 'markets',
-    'interview': 'blockstories',
-    'analysis': 'blockstories',
-  };
-  const classes = tags.map(tag => mappings[tag.toLowerCase()]).filter(Boolean);
-  return [...new Set(classes)].join(' ');
-}
-
-// Helper function to get the primary tag for display
-function getPrimaryTag(tags: string[]): string | null {
-  const priorityTags = ['interview', 'analysis', 'tokenization', 'regulation', 'markets', 'stablecoin'];
-  for (const priority of priorityTags) {
-    const match = tags.find(t => t.toLowerCase() === priority);
-    if (match) return match.charAt(0).toUpperCase() + match.slice(1);
-  }
-  return tags[0] ? tags[0].charAt(0).toUpperCase() + tags[0].slice(1) : null;
-}
----
-
-<Layout title="Blockstories — Institutional Digital Asset Intelligence" lang="de">
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blockstories — Institutional Digital Asset Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,700&family=Source+Serif+4:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-/* ═══ 1. EDITORIAL HERO ═══ */
+/* ═══════════════════════════════════════════════════
+   BLOCKSTORIES V3 — From-scratch rebuild
+   Learnings: Semafor · Blockworks · Messari
+   ═══════════════════════════════════════════════════ */
+
+:root{
+  --bg:#FFFFFF;--surface:#F9FAFB;--surface-warm:#F3F4F6;--surface-dark:#122B42;
+  --border:#E5E7EB;--border-light:#F3F4F6;
+  --text-1:#030712;--text-2:#374151;--text-3:#6B7280;
+  --accent:#5A8A86;--accent-light:rgba(90,138,134,.06);--accent-hover:#4A7672;
+  --green:#12B76A;--red:#D02727;--ink-faint:#9CA3AF;
+  --serif:'Instrument Serif',Georgia,serif;
+  --display:'Playfair Display',serif;
+  --body:'Source Serif 4',serif;
+  --sans:'DM Sans',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --max-w:1200px;--ease:.25s ease;
+  --sp-xs:8px;--sp-s:16px;--sp-m:24px;--sp-l:36px;--sp-xl:56px;--sp-2xl:80px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{font-family:var(--sans);background:var(--bg);color:var(--text-1);line-height:1.6}
+a{color:inherit;text-decoration:none}
+img{display:block;width:100%;height:100%;object-fit:cover}
+.wrap{max-width:var(--max-w);margin:0 auto;padding:0 var(--sp-l)}
+
+/* ═══ 1. MASTHEAD — header + integrated city clocks ═══ */
+.masthead{
+  position:-webkit-sticky;position:sticky;top:0;z-index:100;
+  background:rgba(255,255,255,.96);
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.masthead-top{
+  display:flex;align-items:center;justify-content:space-between;height:56px;
+}
+.logo{display:flex;align-items:center}
+.logo svg{height:22px;width:auto}
+.masthead-right{display:flex;align-items:center;gap:28px}
+.clocks{display:flex;gap:20px;align-items:center}
+.ck{
+  display:flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:.5rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-3);
+}
+.ck-time{color:var(--text-2);font-weight:500}
+.ck-dot{width:3px;height:3px;border-radius:50%;background:var(--green);flex-shrink:0}
+.nav{display:flex;align-items:center;gap:24px;list-style:none}
+.nav a{font-size:.75rem;font-weight:500;color:var(--text-2);letter-spacing:.05em;text-transform:uppercase;transition:color var(--ease)}
+.nav a:hover{color:var(--text-1)}
+.nav-cta{padding:7px 18px!important;background:var(--text-1)!important;color:var(--bg)!important;border-radius:3px}
+.nav-cta:hover{opacity:.85}
+
+/* ═══ 2. EDITORIAL HERO ═══ */
 .hero-ed{
   border-bottom:1px solid var(--border);padding:4.5rem 0 4rem;
   background:linear-gradient(170deg,#F0F4FA 0%,#F7F8FB 40%,var(--bg) 100%);
@@ -195,7 +125,7 @@ function getPrimaryTag(tags: string[]): string | null {
 .hero-num-val{font-family:var(--display);font-size:1.8rem;font-weight:700;color:var(--accent)}
 .hero-num-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--text-3);margin-top:.15rem;font-family:var(--sans)}
 
-/* ═══ 2. WGO TRANSITION ═══ */
+/* ═══ 3. WGO TRANSITION ═══ */
 .wgo{padding:var(--sp-xl) 0 var(--sp-l);text-align:center}
 .wgo h2{
   font-family:var(--serif);font-size:2.1rem;font-weight:400;
@@ -208,7 +138,7 @@ function getPrimaryTag(tags: string[]): string | null {
 .wgo strong{font-weight:600}
 .wgo-sub{font-family:var(--mono);font-size:.65rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-top:10px}
 
-/* ═══ 3. DATELINE + DAILY BRIEFING ═══ */
+/* ═══ 4. DATELINE + DAILY BRIEFING ═══ */
 .dateline{
   padding:18px 0 14px;display:flex;justify-content:space-between;align-items:center;
   border-bottom:1px solid var(--border);
@@ -225,6 +155,7 @@ function getPrimaryTag(tags: string[]): string | null {
   width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;
   box-shadow:0 0 0 0 rgba(90,138,134,.4);animation:pulse 2.5s ease-in-out infinite;
 }
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(90,138,134,.4)}50%{box-shadow:0 0 0 5px rgba(90,138,134,0)}}
 .db-chev{display:inline-block;font-size:.45rem;transition:transform .3s ease}
 .db-btn.is-open .db-chev{transform:rotate(180deg)}
 .db-panel{max-height:0;overflow:hidden;transition:max-height .35s ease,opacity .25s ease;opacity:0}
@@ -240,52 +171,52 @@ function getPrimaryTag(tags: string[]): string | null {
 .db-link{display:inline-block;margin-top:10px;font-family:var(--mono);font-size:.5rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);transition:color var(--ease)}
 .db-link:hover{color:var(--text-1)}
 
-/* ═══ 4. SEMAFORM — structured article ═══ */
-.briefing-card{
+/* ═══ 5. SEMAFORM — structured article ═══ */
+.sf{
   margin:40px 0 var(--sp-xl);border:1px solid var(--border);
   border-radius:6px;overflow:hidden;background:var(--surface);
   transition:box-shadow var(--ease);
 }
-.briefing-card:hover{box-shadow:0 8px 40px rgba(0,0,0,.05)}
-.briefing-band{
+.sf:hover{box-shadow:0 8px 40px rgba(0,0,0,.05)}
+.sf-band{
   display:grid;grid-template-columns:1fr 1fr;
   background:linear-gradient(135deg,#0e2237,#193352 50%,#0e2237);
   position:relative;overflow:hidden;
 }
-.briefing-band::before{
+.sf-band::before{
   content:'';position:absolute;inset:0;
   background:radial-gradient(ellipse at 25% 50%,rgba(90,138,134,.15),transparent 60%),
              radial-gradient(ellipse at 75% 30%,rgba(90,138,134,.08),transparent 50%);
 }
-.briefing-band::after{
+.sf-band::after{
   content:'';position:absolute;inset:0;
   background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
   background-size:40px 40px;
 }
-.briefing-band-text{position:relative;z-index:1;padding:40px 44px;color:#fff;display:flex;flex-direction:column;justify-content:center}
-.briefing-tag{font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
-.briefing-band-text h2{font-family:var(--display);font-size:1.8rem;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin-bottom:10px}
-.briefing-meta{font-family:var(--mono);font-size:.6rem;color:rgba(255,255,255,.4)}
-.briefing-band-vis{
+.sf-band-text{position:relative;z-index:1;padding:40px 44px;color:#fff;display:flex;flex-direction:column;justify-content:center}
+.sf-tag{font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.sf-band-text h2{font-family:var(--display);font-size:1.8rem;font-weight:700;line-height:1.2;letter-spacing:-.02em;margin-bottom:10px}
+.sf-band-meta{font-family:var(--mono);font-size:.6rem;color:rgba(255,255,255,.4)}
+.sf-band-vis{
   position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
   min-height:200px;
 }
-.briefing-authors{display:flex;gap:28px;align-items:flex-start}
-.briefing-authors > div{display:flex;flex-direction:column;align-items:center;gap:8px}
-.briefing-avatar{
+.sf-authors{display:flex;gap:28px;align-items:flex-start}
+.sf-authors > div{display:flex;flex-direction:column;align-items:center;gap:8px}
+.sf-avatar{
   width:64px;height:64px;border-radius:50%;
   border:2px solid rgba(90,138,134,.4);
   object-fit:cover;
   background:rgba(90,138,134,.2);
 }
-.briefing-author-info{text-align:center}
-.briefing-author-name{font-family:var(--sans);font-size:.75rem;font-weight:500;color:#fff;line-height:1.3}
-.briefing-author-role{font-family:var(--mono);font-size:.45rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35)}
-.briefing-avatar-init{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.04em}
-.briefing-tabs{margin-bottom:0!important}
-.briefing-card[data-briefing]{margin-top:0;border-top:none;border-radius:0 0 6px 6px}
-.briefing-tabs{border-radius:6px 6px 0 0;background:var(--surface);border:1px solid var(--border);border-bottom:none;padding:12px 16px 0}
-.briefing-label-corner{
+.sf-author-info{text-align:center}
+.sf-author-name{font-family:var(--sans);font-size:.75rem;font-weight:500;color:#fff;line-height:1.3}
+.sf-author-role{font-family:var(--mono);font-size:.45rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+.sf-avatar-init{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:.7rem;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.04em}
+.sf-tabs{margin-bottom:0!important}
+.sf[data-briefing]{margin-top:0;border-top:none;border-radius:0 0 6px 6px}
+.sf-tabs{border-radius:6px 6px 0 0;background:var(--surface);border:1px solid var(--border);border-bottom:none;padding:12px 16px 0}
+.sf-label-corner{
   position:absolute;bottom:20px;right:24px;font-family:var(--mono);
   font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);
 }
@@ -307,80 +238,81 @@ function getPrimaryTag(tags: string[]): string | null {
 .sf-sec p strong{color:var(--text-1);font-weight:600}
 
 /* Also in this edition */
-.briefing-summary-section{padding:28px 32px;border-bottom:1px solid var(--border-light)}
-.briefing-summary-label{
+.sf-also{padding:28px 32px;border-bottom:1px solid var(--border-light)}
+.sf-also-label{
   font-family:var(--mono);font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;
   color:var(--accent);margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--border-light);
 }
-.briefing-summary{list-style:disc;padding-left:20px;margin:0}
-.briefing-summary li{
+.sf-also-list{list-style:disc;padding-left:20px;margin:0}
+.sf-also-list li{
   font-size:.88rem;line-height:1.7;color:var(--text-2);margin-bottom:12px;
 }
-.briefing-summary li:last-child{margin-bottom:0}
-.briefing-summary li strong{color:var(--text-1);font-weight:600}
+.sf-also-list li:last-child{margin-bottom:0}
+.sf-also-list li strong{color:var(--text-1);font-weight:600}
 
 /* Experts featured */
-.briefing-featured{
+.sf-experts{
   padding:24px 32px;border-bottom:1px solid var(--border-light);
   display:flex;align-items:center;gap:28px;
 }
-.briefing-featured-label{
+.sf-experts-label{
   font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;
   color:var(--accent);white-space:nowrap;
 }
-.briefing-featured-row{display:flex;gap:24px;align-items:flex-start}
-.briefing-featured-item{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:72px}
-.briefing-featured-avatar{
+.sf-experts-row{display:flex;gap:24px;align-items:flex-start}
+.sf-expert{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:72px}
+.sf-expert-avatar{
   width:48px;height:48px;border-radius:50%;object-fit:cover;
   border:2px solid var(--border-light);margin-bottom:6px;
 }
-.briefing-featured-name{font-size:.7rem;font-weight:600;color:var(--text-1);line-height:1.3}
-.briefing-featured-company{font-size:.6rem;color:var(--text-3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.sf-expert-name{font-size:.7rem;font-weight:600;color:var(--text-1);line-height:1.3}
+.sf-expert-company{font-size:.6rem;color:var(--text-3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
 
-.briefing-footer{
+.sf-foot{
   padding:14px 32px;background:var(--accent-light);
   display:flex;align-items:center;justify-content:space-between;
 }
-.briefing-read{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);font-weight:500;transition:color var(--ease)}
-.briefing-read:hover{color:var(--text-1)}
-.briefing-share{display:flex;gap:10px}
-.briefing-share button{
+.sf-read{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);font-weight:500;transition:color var(--ease)}
+.sf-read:hover{color:var(--text-1)}
+.sf-share{display:flex;gap:10px}
+.sf-share button{
   font-family:var(--mono);font-size:.5rem;color:var(--text-3);background:none;
   border:1px solid var(--border);padding:3px 9px;border-radius:2px;cursor:pointer;
   transition:all var(--ease);
 }
-.briefing-share button:hover{border-color:var(--accent);color:var(--accent)}
+.sf-share button:hover{border-color:var(--accent);color:var(--accent)}
 
 /* Crypto briefing — green band background */
-.briefing-card[data-briefing="crypto"] .briefing-band{
+.sf[data-briefing="crypto"] .sf-band{
   background:linear-gradient(135deg,#1a3329,#274945 50%,#1a3329);
 }
-.briefing-card[data-briefing="crypto"] .briefing-band::before{
+.sf[data-briefing="crypto"] .sf-band::before{
   background:radial-gradient(ellipse at 25% 50%,rgba(202,241,218,.12),transparent 60%),
              radial-gradient(ellipse at 75% 30%,rgba(202,241,218,.06),transparent 50%);
 }
 
-/* ═══ 5. SECTION DIVIDER ═══ */
+/* ═══ 6. SECTION DIVIDER ═══ */
 .sdiv{display:flex;align-items:center;gap:14px;margin-bottom:var(--sp-m)}
 .sdiv h2{font-family:var(--serif);font-size:1.4rem;font-weight:400;letter-spacing:-.01em;white-space:nowrap}
 .sdiv::after{content:'';flex:1;height:1px;background:var(--border)}
 .sdiv a{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);white-space:nowrap;transition:color var(--ease)}
 .sdiv a:hover{color:var(--text-1)}
 
-/* ═══ 6. MARKET FLOW ═══ */
-.marketflow-header{
+/* ═══ 7. MARKET FLOW ═══ */
+.flow-header{
   display:flex;align-items:center;gap:14px;
   margin-bottom:var(--sp-m);
 }
-.marketflow-header .dateline-date{white-space:nowrap}
-.marketflow-header__line{flex:1;height:1px;background:var(--border)}
-.marketflow-header__title-row{display:flex;align-items:center;gap:10px;white-space:nowrap}
-.marketflow-header__title-row h2{font-family:var(--serif);font-size:1.4rem;font-weight:400;letter-spacing:-.01em;margin:0}
-.marketflow-header__pulse-dot{
+.flow-header .dateline-date{white-space:nowrap}
+.flow-header-line{flex:1;height:1px;background:var(--border)}
+.flow-title-row{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.flow-title-row h2{font-family:var(--serif);font-size:1.4rem;font-weight:400;letter-spacing:-.01em;margin:0}
+.flow-dot{
   width:8px;height:8px;border-radius:50%;background:var(--text-1);flex-shrink:0;
   box-shadow:0 0 0 0 rgba(0,0,0,.3);animation:pulse-dark 2.5s ease-in-out infinite;
 }
-.marketflow-section{margin-bottom:var(--sp-xl)}
+@keyframes pulse-dark{0%,100%{box-shadow:0 0 0 0 rgba(0,0,0,.3)}50%{box-shadow:0 0 0 5px rgba(0,0,0,0)}}
+.flow-sec{margin-bottom:var(--sp-xl)}
 .tabs{display:flex;gap:4px;margin-bottom:var(--sp-m)}
 .tab{
   font-family:var(--mono);font-size:.65rem;letter-spacing:.03em;text-transform:uppercase;
@@ -389,28 +321,28 @@ function getPrimaryTag(tags: string[]): string | null {
 }
 .tab:hover{color:var(--text-2);border-color:var(--border)}
 .tab.on{background:var(--text-1);color:var(--bg);border-color:var(--text-1)}
-.marketflow-grid{display:grid;grid-template-columns:1fr 340px;gap:0}
-.marketflow-list{list-style:none;border-right:1px solid var(--border);padding-right:28px}
-.marketflow-item{
+.flow-grid{display:grid;grid-template-columns:1fr 340px;gap:0}
+.flow-list{list-style:none;border-right:1px solid var(--border);padding-right:28px}
+.fi{
   display:grid;grid-template-columns:64px 1fr;gap:18px;
   padding:16px 0;border-bottom:1px solid var(--border-light);cursor:pointer;
   transition:background var(--ease);
 }
-.marketflow-item:hover{background:rgba(0,0,0,.01)}
-.marketflow-item__time{font-family:var(--mono);font-size:.65rem;color:var(--text-3);padding-top:2px}
-.marketflow-item__source{font-family:var(--mono);font-size:.5rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
-.marketflow-item__body h3{font-size:.9rem;font-weight:500;line-height:1.45;margin-bottom:3px}
-.marketflow-item__body p{font-size:.78rem;line-height:1.55;color:var(--text-2)}
-.marketflow-item__tag{
+.fi:hover{background:rgba(0,0,0,.01)}
+.fi-time{font-family:var(--mono);font-size:.65rem;color:var(--text-3);padding-top:2px}
+.fi-src{font-family:var(--mono);font-size:.5rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
+.fi-body h3{font-size:.9rem;font-weight:500;line-height:1.45;margin-bottom:3px}
+.fi-body p{font-size:.78rem;line-height:1.55;color:var(--text-2)}
+.fi-tag{
   display:inline-block;margin-top:7px;font-family:var(--mono);font-size:.5rem;
   letter-spacing:.06em;text-transform:uppercase;color:var(--accent);
   background:var(--accent-light);padding:2px 7px;border-radius:2px;
 }
-.marketflow-item--own{
+.fi.own{
   background:var(--accent-light);border-left:2px solid var(--accent);
   padding-left:16px;margin-left:-18px;padding-right:18px;border-radius:0 4px 4px 0;
 }
-.marketflow-item--own .marketflow-item__source{color:var(--accent)}
+.fi.own .fi-src{color:var(--accent)}
 .sidebar{padding-left:28px}
 .sidebar-sec{margin-bottom:28px}
 .sidebar-sec h4{
@@ -439,7 +371,7 @@ function getPrimaryTag(tags: string[]): string | null {
 .explore .chev{font-size:.7rem;transition:transform var(--ease)}
 .explore a:hover .chev{transform:translateX(3px)}
 
-/* ═══ 7. SUBSCRIPTION BREAKER ═══ */
+/* ═══ 8. SUBSCRIPTION BREAKER ═══ */
 .cta-break{
   margin:var(--sp-xl) 0;background:var(--surface-dark);border-radius:6px;
   padding:40px 44px;display:flex;align-items:center;justify-content:space-between;
@@ -481,30 +413,30 @@ function getPrimaryTag(tags: string[]): string | null {
 }
 .cta-badge::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0}
 
-/* ═══ 8. EDITORIAL / REPORTING ═══ */
-.reporting-section{margin-bottom:var(--sp-xl)}
-.reporting-featured{
+/* ═══ 9. EDITORIAL / REPORTING ═══ */
+.ed-sec{margin-bottom:var(--sp-xl)}
+.ed-feat{
   display:grid;grid-template-columns:1.1fr 1fr;gap:0;margin-bottom:22px;
   border-radius:6px;overflow:hidden;background:var(--surface);
   border:1px solid var(--border);cursor:pointer;transition:box-shadow var(--ease);
 }
-.reporting-featured:hover{box-shadow:0 8px 40px rgba(0,0,0,.06)}
-.reporting-featured__visual{
+.ed-feat:hover{box-shadow:0 8px 40px rgba(0,0,0,.06)}
+.ef-vis{
   min-height:300px;position:relative;
   background:#F7F8FB;
   display:flex;align-items:center;justify-content:center;padding:28px;
 }
-.reporting-featured__visual img{
+.ef-vis img{
   max-width:100%;max-height:280px;object-fit:contain;
   filter:drop-shadow(0 8px 24px rgba(0,0,0,.12));
   position:relative;z-index:1;
 }
-.reporting-featured__badge{position:absolute;top:18px;left:18px;z-index:2;font-family:var(--mono);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border-radius:3px;color:var(--text-2)}
-.reporting-featured__content{padding:40px;display:flex;flex-direction:column;justify-content:center}
-.reporting-featured__content .type{font-family:var(--mono);font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
-.reporting-featured__content h3{font-family:var(--serif);font-size:1.65rem;line-height:1.25;letter-spacing:-.02em;font-weight:400;margin-bottom:12px}
-.reporting-featured__excerpt{font-size:.9rem;line-height:1.65;color:var(--text-2);margin-bottom:18px}
-.reporting-featured__content .meta{font-family:var(--mono);font-size:.65rem;color:var(--text-3)}
+.ef-badge{position:absolute;top:18px;left:18px;z-index:2;font-family:var(--mono);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border-radius:3px;color:var(--text-2)}
+.ef-txt{padding:40px;display:flex;flex-direction:column;justify-content:center}
+.ef-txt .type{font-family:var(--mono);font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.ef-txt h3{font-family:var(--serif);font-size:1.65rem;line-height:1.25;letter-spacing:-.02em;font-weight:400;margin-bottom:12px}
+.ef-txt .exc{font-size:.9rem;line-height:1.65;color:var(--text-2);margin-bottom:18px}
+.ef-txt .meta{font-family:var(--mono);font-size:.65rem;color:var(--text-3)}
 
 /* Pull-quote social proof */
 .pull-quote{
@@ -519,21 +451,21 @@ function getPrimaryTag(tags: string[]): string | null {
   text-transform:uppercase;color:var(--text-3);font-style:normal;
 }
 
-.reporting-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.reporting-card{
+.ed-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.edc{
   background:var(--surface);border:1px solid var(--border);border-radius:4px;
   overflow:hidden;cursor:pointer;transition:all var(--ease);
 }
-.reporting-card:hover{border-color:var(--text-3);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.05)}
-.reporting-card__visual{height:150px;position:relative;overflow:hidden;background:#122B42}
-.reporting-card__visual img{width:100%;height:100%;object-fit:cover;display:block}
-.reporting-card__visual .badge{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:.45rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:2px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);color:rgba(255,255,255,.8)}
-.reporting-card__body{padding:18px 20px 22px}
-.reporting-card__body h3{font-family:var(--serif);font-size:1.1rem;font-weight:400;line-height:1.35;margin-bottom:7px}
-.reporting-card__body p{font-size:.78rem;line-height:1.55;color:var(--text-2);margin-bottom:10px}
-.reporting-card__body .meta{font-family:var(--mono);font-size:.6rem;color:var(--text-3);letter-spacing:.02em}
+.edc:hover{border-color:var(--text-3);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.05)}
+.edc-vis{height:150px;position:relative;overflow:hidden;background:#122B42}
+.edc-vis img{width:100%;height:100%;object-fit:cover;display:block}
+.edc-vis .badge{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:.45rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:2px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);color:rgba(255,255,255,.8)}
+.edc-body{padding:18px 20px 22px}
+.edc-body h3{font-family:var(--serif);font-size:1.1rem;font-weight:400;line-height:1.35;margin-bottom:7px}
+.edc-body p{font-size:.78rem;line-height:1.55;color:var(--text-2);margin-bottom:10px}
+.edc-body .meta{font-family:var(--mono);font-size:.6rem;color:var(--text-3);letter-spacing:.02em}
 
-/* ═══ 9. DATA SECTION ═══ */
+/* ═══ 10. DATA SECTION ═══ */
 .data-sec{
   background:var(--surface-dark);padding:var(--sp-xl) 0;
   margin-bottom:var(--sp-xl);border-radius:8px;color:#fff;
@@ -572,7 +504,7 @@ function getPrimaryTag(tags: string[]): string | null {
 .dt-activities th:last-child,.dt-activities td:last-child{width:15%}
 .dt-activities th:nth-child(2),.dt-activities td:nth-child(2){width:57%}
 
-/* ═══ 10. FLAGSHIP REPORT ═══ */
+/* ═══ 11. FLAGSHIP REPORT ═══ */
 .flagship{
   margin:var(--sp-xl) 0;background:var(--surface-dark);border-radius:8px;
   overflow:hidden;display:grid;grid-template-columns:1fr 1.4fr;min-height:300px;
@@ -607,7 +539,7 @@ function getPrimaryTag(tags: string[]): string | null {
 }
 .fl-ghost:hover{border-color:rgba(255,255,255,.4);color:#fff}
 
-/* ═══ 11. EVENTS ═══ */
+/* ═══ 12. EVENTS ═══ */
 .ev-sec{margin-bottom:var(--sp-xl)}
 .ev-video{
   position:relative;border-radius:6px;overflow:hidden;
@@ -665,7 +597,7 @@ function getPrimaryTag(tags: string[]): string | null {
 .evc-body .loc{font-size:.72rem;color:var(--text-3)}
 
 
-/* ═══ 12. MISSION ═══ */
+/* ═══ 14. MISSION ═══ */
 .mission{padding:var(--sp-xl) 0;border-top:none}
 .mission-lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:22px;padding-bottom:9px;border-bottom:1px solid var(--border)}
 .mission-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
@@ -677,7 +609,7 @@ function getPrimaryTag(tags: string[]): string | null {
 .mv h4{font-size:.78rem;font-weight:600;margin-bottom:3px}
 .mv p{font-size:.72rem;line-height:1.5;color:var(--text-2)}
 
-/* ═══ 13. SUBSCRIBE ═══ */
+/* ═══ 15. SUBSCRIBE ═══ */
 .sub-bar{background:var(--surface-warm);padding:48px 0;border-top:1px solid var(--border)}
 .sub-inner{display:flex;justify-content:space-between;align-items:center;gap:44px}
 .sub-txt h3{font-family:var(--serif);font-size:1.3rem;font-weight:400;margin-bottom:3px}
@@ -689,22 +621,34 @@ function getPrimaryTag(tags: string[]): string | null {
 .sub-form button{font-family:var(--sans);font-size:.78rem;font-weight:500;padding:11px 22px;background:var(--text-1);color:var(--bg);border:none;border-radius:3px;cursor:pointer;transition:opacity var(--ease)}
 .sub-form button:hover{opacity:.85}
 
+/* ═══ 16. FOOTER ═══ */
+.foot{border-top:1px solid var(--border);padding:24px 0}
+.foot-inner{display:flex;justify-content:space-between;align-items:center}
+.foot-left{font-size:.72rem;color:var(--text-3)}
+.foot-links{display:flex;gap:22px;list-style:none}
+.foot-links a{font-size:.65rem;font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--text-3);transition:color var(--ease)}
+.foot-links a:hover{color:var(--text-1)}
+
+/* ═══ ANIMATIONS ═══ */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:1024px){
   .hero-ed-grid{grid-template-columns:1fr;gap:2.5rem}
   .hero-aside{border-left:none;padding-left:0;border-top:2px solid var(--text-1);padding-top:1.5rem}
-  .briefing-band{grid-template-columns:1fr}
-  .briefing-band-vis{display:none}
+  .sf-band{grid-template-columns:1fr}
+  .sf-band-vis{display:none}
   .sf-grid{grid-template-columns:1fr}
   .sf-sec:nth-child(odd){border-right:none}
-  .briefing-featured{flex-direction:column;align-items:flex-start;gap:14px}
-  .briefing-featured-row{flex-wrap:wrap}
-  .marketflow-grid{grid-template-columns:1fr}
-  .marketflow-list{border-right:none;padding-right:0}
+  .sf-experts{flex-direction:column;align-items:flex-start;gap:14px}
+  .sf-experts-row{flex-wrap:wrap}
+  .flow-grid{grid-template-columns:1fr}
+  .flow-list{border-right:none;padding-right:0}
   .sidebar{padding-left:0;padding-top:28px;border-top:1px solid var(--border)}
-  .reporting-featured{grid-template-columns:1fr}
-  .reporting-featured__visual{min-height:200px}
-  .reporting-grid{grid-template-columns:1fr 1fr}
+  .ed-feat{grid-template-columns:1fr}
+  .ef-vis{min-height:200px}
+  .ed-grid{grid-template-columns:1fr 1fr}
   .d-stats{grid-template-columns:1fr 1fr}
   .d-tables{grid-template-columns:1fr}
   .flagship{grid-template-columns:1fr}
@@ -718,6 +662,7 @@ function getPrimaryTag(tags: string[]): string | null {
   .pt:last-child{border-bottom:none}
   .mission-grid{grid-template-columns:1fr;gap:36px}
   .cta-break{flex-direction:column;text-align:left;padding:32px 28px}
+  .clocks{display:none}
 }
 @media(max-width:640px){
   .wrap{padding:0 20px}
@@ -727,13 +672,13 @@ function getPrimaryTag(tags: string[]): string | null {
   .hero-form button{width:100%}
   .hero-nums{grid-template-columns:1fr 1fr}
   .wgo h2{font-size:1.4rem}
-  .briefing-band-text{padding:28px 24px}
-  .briefing-band-text h2{font-size:1.4rem}
+  .sf-band-text{padding:28px 24px}
+  .sf-band-text h2{font-size:1.4rem}
   .sf-sec{padding:18px 20px}
-  .briefing-summary-section{padding:20px 20px}
-  .briefing-featured{padding:18px 20px}
-  .briefing-footer{padding:12px 20px}
-  .reporting-grid{grid-template-columns:1fr}
+  .sf-also{padding:20px 20px}
+  .sf-experts{padding:18px 20px}
+  .sf-foot{padding:12px 20px}
+  .ed-grid{grid-template-columns:1fr}
   .ev-video{height:200px}
   .ev-v-title{font-size:1.2rem}
   .ev-v-stats{display:none}
@@ -747,15 +692,17 @@ function getPrimaryTag(tags: string[]): string | null {
   .nav{display:none}
   .fl-stats{flex-direction:column;gap:14px}
   .fl-ctas{flex-direction:column}
-  .marketflow-item{grid-template-columns:52px 1fr;gap:12px}
+  .fi{grid-template-columns:52px 1fr;gap:12px}
 }
 </style>
+</head>
+<body>
 
 <!-- ═══ 1. MASTHEAD ═══ -->
 <header class="masthead">
   <div class="wrap">
     <div class="masthead-top">
-      <a href="/" class="logo"><svg width="166" height="26" viewBox="0 0 831 129" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <a href="#" class="logo"><svg width="166" height="26" viewBox="0 0 831 129" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M108.954 64.5428L128.147 32.5558L128.133 32.5333L108.927 0.523438L32.1037 0.523441L0.0940269 53.8729H38.4936L51.2862 32.5518H89.698L70.4966 64.5542H70.5207L89.7266 96.564H51.3148L38.5041 75.2128H0.09375L32.1037 128.563H108.927L128.147 96.5301L108.954 64.5428Z" fill="var(--text-1)"/>
 <path d="M179.417 89.0706H192.164C194.668 89.0706 196.451 88.5774 197.513 87.591C198.651 86.5288 199.221 84.8216 199.221 82.4694V75.8683C199.221 73.5162 198.651 71.8469 197.513 70.8605C196.375 69.8742 194.516 69.381 191.937 69.381H179.417C178.582 69.381 178.165 69.7983 178.165 70.6329V87.8186C178.165 88.6533 178.582 89.0706 179.417 89.0706ZM179.417 57.6583H191.026C193.454 57.6583 195.237 57.1651 196.375 56.1787C197.513 55.1164 198.082 53.4092 198.082 51.0571V46.6184C198.082 44.2663 197.513 42.597 196.375 41.6107C195.313 40.5484 193.568 40.0173 191.14 40.0173H179.417C178.582 40.0173 178.165 40.4346 178.165 41.2692V56.4063C178.165 57.2409 178.582 57.6583 179.417 57.6583ZM163.711 98.7447V30.3432C163.711 28.7498 164.508 27.9531 166.101 27.9531H193.416C199.41 27.9531 204.039 29.5465 207.301 32.7333C210.564 35.92 212.195 40.4725 212.195 46.3908V51.0571C212.195 57.5065 209.198 61.6796 203.204 63.5765C206.239 64.0318 208.667 65.2837 210.488 67.3323C212.309 69.3051 213.219 72.1504 213.219 75.8683V82.6971C213.219 88.6153 211.588 93.1678 208.326 96.3546C205.063 99.5413 200.472 101.135 194.554 101.135H166.101C164.508 101.135 163.711 100.338 163.711 98.7447Z" fill="var(--text-1)"/>
 <path d="M266.676 101.135H229.232C227.638 101.135 226.841 100.338 226.841 98.7447V30.3432C226.841 28.7498 227.638 27.9531 229.232 27.9531H238.906C240.499 27.9531 241.296 28.7498 241.296 30.3432V87.2496C241.296 88.0842 241.751 88.5015 242.661 88.5015H266.676C268.193 88.5015 268.952 89.3361 268.952 91.0054V98.7447C268.952 100.338 268.193 101.135 266.676 101.135Z" fill="var(--text-1)"/>
@@ -773,10 +720,10 @@ function getPrimaryTag(tags: string[]): string | null {
       <div class="masthead-right">
         <nav>
           <ul class="nav">
-            <li><a href="/news">News</a></li>
-            <li><a href="/briefings">Briefings</a></li>
-            <li><a href="/data">Data</a></li>
-            <li><a href="/events">Events</a></li>
+            <li><a href="news.html">News</a></li>
+            <li><a href="briefings.html">Briefings</a></li>
+            <li><a href="data.html">Data</a></li>
+            <li><a href="events.html">Events</a></li>
             <li><a href="#" class="nav-cta">Subscribe</a></li>
           </ul>
         </nav>
@@ -825,164 +772,142 @@ function getPrimaryTag(tags: string[]): string | null {
 <main>
 <div class="wrap">
   <!-- ═══ 5. SEMAFORM — structured featured article ═══ -->
+  <!-- subtitle removed -->
   <div class="tabs sf-tabs" style="margin-bottom:0" id="briefingTabs">
     <button class="tab on" data-briefing="institutional">Institutional Briefing</button>
     <button class="tab" data-briefing="crypto">Crypto Briefing</button>
   </div>
 
   <!-- Institutional Briefing -->
-  {institutionalBriefing ? (
-  <div class="briefing-card reveal" data-briefing="institutional">
-    <div class="briefing-band">
-      <div class="briefing-band-text">
-        <div class="briefing-tag">Institutional Briefing · {formatDate(institutionalBriefing.publishDate)}</div>
-        <h2>{institutionalBriefing.title}</h2>
-        <div class="briefing-meta">By {institutionalBriefing.authors.map(a => a.name).join(" & ")} · {calculateReadTime(institutionalBriefing.content)}min structured read</div>
+  <div class="sf reveal" data-briefing="institutional">
+    <div class="sf-band">
+      <div class="sf-band-text">
+        <div class="sf-tag">Institutional Briefing · Feb 26, 2026</div>
+        <h2>Is it a fund? Money? Or is it both?</h2>
+        <div class="sf-band-meta">By Louis Tellier &amp; Maximilian Vargas · 10min structured read</div>
       </div>
-      <div class="briefing-band-vis">
-        <div class="briefing-authors">
-          {institutionalBriefing.authors.map((author, idx) => (
+      <div class="sf-band-vis">
+        <div class="sf-authors">
           <div>
-            {author.imageUrl ? (
-              <img class="briefing-avatar" src={author.imageUrl} alt={author.name}>
-            ) : (
-              <div class="briefing-avatar briefing-avatar-init">{author.name.split(" ").map(n => n[0]).join("")}</div>
-            )}
-            <div class="briefing-author-info"><div class="briefing-author-name">{author.name}</div><div class="briefing-author-role">{getAuthorRole(idx, institutionalBriefing.beehiivPublicationId)}</div></div>
+            <img class="sf-avatar" src="Louis Tellier_new.jpg" alt="Louis Tellier">
+            <div class="sf-author-info"><div class="sf-author-name">Louis Tellier</div><div class="sf-author-role">Lead Institutional Research</div></div>
           </div>
-          ))}
+          <div>
+            <img class="sf-avatar" src="Maximilian Vargas.jpg" alt="Maximilian Vargas">
+            <div class="sf-author-info"><div class="sf-author-name">Maximilian Vargas</div><div class="sf-author-role">Founder</div></div>
+          </div>
         </div>
-        <span class="briefing-label-corner">Institutional Briefing</span>
+        <span class="sf-label-corner">Institutional Briefing</span>
       </div>
     </div>
-    {institutionalBriefing.summary && (
-    <div class="briefing-summary-section">
-      <div class="briefing-summary-label">Also in this edition</div>
-      <ul class="briefing-summary">
-        {institutionalBriefing.summary.split("\n").filter(line => line.trim()).map(line => (
-          <li>{line}</li>
-        ))}
+    <div class="sf-also">
+      <div class="sf-also-label">Also in this edition</div>
+      <ul class="sf-also-list">
+        <li>Luxembourg's CSSF allows UCITS to allocate up to <strong>10% of NAV to crypto</strong> via eligible ETPs — a first for a major European fund domicile</li>
+        <li>Why tokenized money market funds are <strong>blurring the line with stablecoins</strong> — and what that means for institutional demand</li>
+        <li>Interviews with <strong>CoinShares, VanEck, Allfunds Blockchain</strong> and Woud Law on the CSSF decision</li>
       </ul>
     </div>
-    )}
-    {institutionalBriefing.featured.length > 0 && (
-    <div class="briefing-featured">
-      <span class="briefing-featured-label">Experts featured:</span>
-      <div class="briefing-featured-row">
-        {institutionalBriefing.featured.map(person => (
-        <div class="briefing-featured-item">
-          {person.imageUrl ? (
-            <img class="briefing-featured-avatar" src={person.imageUrl} alt={person.name}>
-          ) : (
-            <div class="briefing-featured-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface-warm);font-family:var(--mono);font-size:.7rem;font-weight:600;color:var(--text-2);">{person.name.split(" ").map(n => n[0]).join("")}</div>
-          )}
-          <div class="briefing-featured-name">{person.name}</div>
-          {person.company && <div class="briefing-featured-company">{person.company}</div>}
+    <div class="sf-experts">
+      <span class="sf-experts-label">Experts featured:</span>
+      <div class="sf-experts-row">
+        <div class="sf-expert">
+          <img class="sf-expert-avatar" src="https://via.placeholder.com/64" alt="Expert 1">
+          <div class="sf-expert-name">Jean Devaux</div>
+          <div class="sf-expert-company">CoinShares</div>
         </div>
-        ))}
+        <div class="sf-expert">
+          <img class="sf-expert-avatar" src="https://via.placeholder.com/64" alt="Expert 2">
+          <div class="sf-expert-name">Thomas & Frank</div>
+          <div class="sf-expert-company">VanEck</div>
+        </div>
+        <div class="sf-expert">
+          <img class="sf-expert-avatar" src="https://via.placeholder.com/64" alt="Expert 3">
+          <div class="sf-expert-name">Laura Ruiz</div>
+          <div class="sf-expert-company">Allfunds Blockchain</div>
+        </div>
+        <div class="sf-expert">
+          <img class="sf-expert-avatar" src="https://via.placeholder.com/64" alt="Expert 4">
+          <div class="sf-expert-name">Marc Woud</div>
+          <div class="sf-expert-company">Woud Law</div>
+        </div>
       </div>
     </div>
-    )}
-    <div class="briefing-footer">
-      <a href={institutionalBriefing.webUrl || "#"} class="briefing-read">Read full briefing →</a>
-      <div class="briefing-share">
+    <div class="sf-foot">
+      <a href="#" class="sf-read">Read full briefing →</a>
+      <div class="sf-share">
         <button>Share</button>
       </div>
     </div>
   </div>
-  ) : (
-  <div class="briefing-card reveal" data-briefing="institutional">
-    <div class="briefing-band">
-      <div class="briefing-band-text">
-        <div class="briefing-tag">Institutional Briefing</div>
-        <h2>No briefing available</h2>
-        <div class="briefing-meta">Check back soon for the latest updates</div>
-      </div>
-    </div>
-  </div>
-  )}
 
   <!-- Crypto Briefing -->
-  {cryptoBriefing ? (
-  <div class="briefing-card" data-briefing="crypto" style="display:none">
-    <div class="briefing-band">
-      <div class="briefing-band-text">
-        <div class="briefing-tag">Crypto Briefing · {formatDate(cryptoBriefing.publishDate)}</div>
-        <h2>{cryptoBriefing.title}</h2>
-        <div class="briefing-meta">By {cryptoBriefing.authors.map(a => a.name).join(" & ")} · {calculateReadTime(cryptoBriefing.content)}min structured read</div>
+  <div class="sf" data-briefing="crypto" style="display:none">
+    <div class="sf-band">
+      <div class="sf-band-text">
+        <div class="sf-tag">Crypto Briefing · Feb 13, 2026</div>
+        <h2>Twelve nine figures at Coinbase</h2>
+        <div class="sf-band-meta">By Fiodar Yuzhyk &amp; Maximilian Vargas · 8min structured read</div>
       </div>
-      <div class="briefing-band-vis">
-        <div class="briefing-authors">
-          {cryptoBriefing.authors.map((author, idx) => (
+      <div class="sf-band-vis">
+        <div class="sf-authors">
           <div>
-            {author.imageUrl ? (
-              <img class="briefing-avatar" src={author.imageUrl} alt={author.name}>
-            ) : (
-              <div class="briefing-avatar briefing-avatar-init">{author.name.split(" ").map(n => n[0]).join("")}</div>
-            )}
-            <div class="briefing-author-info"><div class="briefing-author-name">{author.name}</div><div class="briefing-author-role">{getAuthorRole(idx, cryptoBriefing.beehiivPublicationId)}</div></div>
+            <img class="sf-avatar" src="fio.jpeg" alt="Fiodar Yuzhyk">
+            <div class="sf-author-info"><div class="sf-author-name">Fiodar Yuzhyk</div><div class="sf-author-role">Lead Crypto Research</div></div>
           </div>
-          ))}
+          <div>
+            <img class="sf-avatar" src="Maximilian Vargas.jpg" alt="Maximilian Vargas">
+            <div class="sf-author-info"><div class="sf-author-name">Maximilian Vargas</div><div class="sf-author-role">Founder</div></div>
+          </div>
         </div>
-        <span class="briefing-label-corner">Crypto Briefing</span>
+        <span class="sf-label-corner">Crypto Briefing</span>
       </div>
     </div>
-    {cryptoBriefing.summary && (
-    <div class="briefing-summary-section">
-      <div class="briefing-summary-label">Also in this edition</div>
-      <ul class="briefing-summary">
-        {cryptoBriefing.summary.split("\n").filter(line => line.trim()).map(line => (
-          <li>{line}</li>
-        ))}
+    <div class="sf-also">
+      <div class="sf-also-label">Also in this edition</div>
+      <ul class="sf-also-list">
+        <li>Coinbase reported <strong>$1.78B in Q4 revenue</strong> and now custodies 12% of all crypto globally</li>
+        <li>BlackRock's BUIDL fund is now <strong>tradeable on Uniswap</strong> for qualified purchasers</li>
+        <li>Tokenized equities on Euler and Morpho can now serve as <strong>collateral for stablecoin loans</strong></li>
       </ul>
     </div>
-    )}
-    {cryptoBriefing.featured.length > 0 && (
-    <div class="briefing-featured">
-      <span class="briefing-featured-label">Experts featured:</span>
-      <div class="briefing-featured-row">
-        {cryptoBriefing.featured.map(person => (
-        <div class="briefing-featured-item">
-          {person.imageUrl ? (
-            <img class="briefing-featured-avatar" src={person.imageUrl} alt={person.name}>
-          ) : (
-            <div class="briefing-featured-avatar" style="display:flex;align-items:center;justify-content:center;background:var(--surface-warm);font-family:var(--mono);font-size:.7rem;font-weight:600;color:var(--text-2);">{person.name.split(" ").map(n => n[0]).join("")}</div>
-          )}
-          <div class="briefing-featured-name">{person.name}</div>
-          {person.company && <div class="briefing-featured-company">{person.company}</div>}
+    <div class="sf-experts">
+      <span class="sf-experts-label">Experts featured:</span>
+      <div class="sf-experts-row">
+        <div class="sf-expert">
+          <img class="sf-expert-avatar" src="https://via.placeholder.com/64" alt="Expert 1">
+          <div class="sf-expert-name">Brian Armstrong</div>
+          <div class="sf-expert-company">Coinbase</div>
         </div>
-        ))}
+        <div class="sf-expert">
+          <img class="sf-expert-avatar" src="https://via.placeholder.com/64" alt="Expert 2">
+          <div class="sf-expert-name">Robert Mitchnick</div>
+          <div class="sf-expert-company">BlackRock</div>
+        </div>
+        <div class="sf-expert">
+          <img class="sf-expert-avatar" src="https://via.placeholder.com/64" alt="Expert 3">
+          <div class="sf-expert-name">Johann Kerbrat</div>
+          <div class="sf-expert-company">Robinhood</div>
+        </div>
       </div>
     </div>
-    )}
-    <div class="briefing-footer">
-      <a href={cryptoBriefing.webUrl || "#"} class="briefing-read">Read full briefing →</a>
-      <div class="briefing-share">
+    <div class="sf-foot">
+      <a href="#" class="sf-read">Read full briefing →</a>
+      <div class="sf-share">
         <button>Share</button>
       </div>
     </div>
   </div>
-  ) : (
-  <div class="briefing-card" data-briefing="crypto" style="display:none">
-    <div class="briefing-band">
-      <div class="briefing-band-text">
-        <div class="briefing-tag">Crypto Briefing</div>
-        <h2>No briefing available</h2>
-        <div class="briefing-meta">Check back soon for the latest updates</div>
-      </div>
-    </div>
-  </div>
-  )}
 
   <!-- ═══ 6. MARKET FLOW ═══ -->
-  <section class="marketflow-section reveal" id="flow">
-    <div class="marketflow-header">
-      <div class="marketflow-header__title-row">
-        <span class="marketflow-header__pulse-dot"></span>
+  <section class="flow-sec reveal" id="flow">
+    <div class="flow-header">
+      <div class="flow-title-row">
+        <span class="flow-dot"></span>
         <h2>Market Flow</h2>
       </div>
-      <span class="marketflow-header__line"></span>
-      <span class="dateline-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
+      <span class="flow-header-line"></span>
+      <span class="dateline-date">Saturday, February 15, 2026</span>
     </div>
     <div class="tabs" id="flowTabs">
       <button class="tab on" data-f="latest">Latest</button>
@@ -991,59 +916,43 @@ function getPrimaryTag(tags: string[]): string | null {
       <button class="tab" data-f="regulation">Regulation</button>
       <button class="tab" data-f="markets">Markets</button>
     </div>
-    <div class="marketflow-grid">
-      <ul class="marketflow-list">
-        {marketFlowArticles.length > 0 ? (
-          marketFlowArticles.map((article) => {
-            const categoryClasses = getCategoryClasses(article.tags);
-            const primaryTag = getPrimaryTag(article.tags);
-            return (
-              <li class="marketflow-item marketflow-item--own" data-cat={`blockstories ${categoryClasses}`}>
-                <div>
-                  <div class="marketflow-item__time">{formatTime(article.publishDate)}</div>
-                  <div class="marketflow-item__source">Blockstories</div>
-                </div>
-                <div class="marketflow-item__body">
-                  <h3><a href={article.webUrl} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{article.title}</a></h3>
-                  <p>{article.summary || article.subtitle || ''}</p>
-                  {primaryTag && <span class="marketflow-item__tag">{primaryTag}</span>}
-                </div>
-              </li>
-            );
-          })
-        ) : (
-          <li class="marketflow-item marketflow-item--own" data-cat="blockstories tokenization">
-            <div><div class="marketflow-item__time">16:42</div><div class="marketflow-item__source">Blockstories</div></div>
-            <div class="marketflow-item__body"><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="marketflow-item__tag">Interview</span></div>
-          </li>
-        )}
-        <li class="marketflow-item" data-cat="markets tokenization">
-          <div><div class="marketflow-item__time">15:28</div><div class="marketflow-item__source">Reuters</div></div>
-          <div class="marketflow-item__body"><h3>BlackRock expands tokenized money market fund to Polygon network</h3><p>The world's largest asset manager extends its blockchain-native treasury product to a second network.</p></div>
+    <div class="flow-grid">
+      <ul class="flow-list">
+        <li class="fi own" data-cat="blockstories tokenization">
+          <div><div class="fi-time">16:42</div><div class="fi-src">Blockstories</div></div>
+          <div class="fi-body"><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="fi-tag">Interview</span></div>
         </li>
-        <li class="marketflow-item" data-cat="regulation tokenization">
-          <div><div class="marketflow-item__time">14:15</div><div class="marketflow-item__source">Bloomberg</div></div>
-          <div class="marketflow-item__body"><h3>ECB digital euro pilot enters phase two with 50 participating banks</h3><p>Central bank digital currency initiative expands scope across eurozone member states.</p></div>
+        <li class="fi" data-cat="markets tokenization">
+          <div><div class="fi-time">15:28</div><div class="fi-src">Reuters</div></div>
+          <div class="fi-body"><h3>BlackRock expands tokenized money market fund to Polygon network</h3><p>The world's largest asset manager extends its blockchain-native treasury product to a second network.</p></div>
         </li>
-        <li class="marketflow-item" data-cat="regulation">
-          <div><div class="marketflow-item__time">13:03</div><div class="marketflow-item__source">FT</div></div>
-          <div class="marketflow-item__body"><h3>Singapore MAS releases updated stablecoin regulatory framework</h3><p>New rules establish reserve requirements and disclosure standards for stablecoin issuers.</p></div>
+        <li class="fi" data-cat="regulation tokenization">
+          <div><div class="fi-time">14:15</div><div class="fi-src">Bloomberg</div></div>
+          <div class="fi-body"><h3>ECB digital euro pilot enters phase two with 50 participating banks</h3><p>Central bank digital currency initiative expands scope across eurozone member states.</p></div>
         </li>
-        <li class="marketflow-item" data-cat="markets">
-          <div><div class="marketflow-item__time">11:56</div><div class="marketflow-item__source">CoinDesk</div></div>
-          <div class="marketflow-item__body"><h3>CME Group to launch Solana futures contracts in March</h3><p>Regulated derivatives venue expands digital asset offering beyond Bitcoin and Ethereum.</p></div>
+        <li class="fi own" data-cat="blockstories markets">
+          <div><div class="fi-time">13:40</div><div class="fi-src">Blockstories</div></div>
+          <div class="fi-body"><h3>Why European Banks Are Moving Faster Than US Peers on Tokenization</h3><p>MiCA clarity combined with ECB experimentation has created a regulatory environment US institutions now envy.</p><span class="fi-tag">Analysis</span></div>
         </li>
-        <li class="marketflow-item" data-cat="tokenization">
-          <div><div class="marketflow-item__time">10:42</div><div class="marketflow-item__source">Handelsblatt</div></div>
-          <div class="marketflow-item__body"><h3>Commerzbank's crypto subsidiary processes first institutional trade</h3><p>German banking giant enters active digital asset trading through newly licensed entity.</p></div>
+        <li class="fi" data-cat="regulation">
+          <div><div class="fi-time">13:03</div><div class="fi-src">FT</div></div>
+          <div class="fi-body"><h3>Singapore MAS releases updated stablecoin regulatory framework</h3><p>New rules establish reserve requirements and disclosure standards for stablecoin issuers.</p></div>
         </li>
-        <li class="marketflow-item" data-cat="regulation markets">
-          <div><div class="marketflow-item__time">09:58</div><div class="marketflow-item__source">ECB</div></div>
-          <div class="marketflow-item__body"><h3>ECB publishes new framework for digital asset reserve holdings</h3><p>Updated guidance outlines how eurozone banks can classify and report digital asset positions on balance sheets.</p></div>
+        <li class="fi" data-cat="markets">
+          <div><div class="fi-time">11:56</div><div class="fi-src">CoinDesk</div></div>
+          <div class="fi-body"><h3>CME Group to launch Solana futures contracts in March</h3><p>Regulated derivatives venue expands digital asset offering beyond Bitcoin and Ethereum.</p></div>
         </li>
-        <li class="marketflow-item" data-cat="markets">
-          <div><div class="marketflow-item__time">09:14</div><div class="marketflow-item__source">The Block</div></div>
-          <div class="marketflow-item__body"><h3>Tokenized US Treasury products surpass $4B in total AUM</h3><p>Institutional demand for on-chain government bonds continues to accelerate across multiple issuers.</p></div>
+        <li class="fi" data-cat="tokenization">
+          <div><div class="fi-time">10:42</div><div class="fi-src">Handelsblatt</div></div>
+          <div class="fi-body"><h3>Commerzbank's crypto subsidiary processes first institutional trade</h3><p>German banking giant enters active digital asset trading through newly licensed entity.</p></div>
+        </li>
+        <li class="fi" data-cat="regulation markets">
+          <div><div class="fi-time">09:58</div><div class="fi-src">ECB</div></div>
+          <div class="fi-body"><h3>ECB publishes new framework for digital asset reserve holdings</h3><p>Updated guidance outlines how eurozone banks can classify and report digital asset positions on balance sheets.</p></div>
+        </li>
+        <li class="fi" data-cat="markets">
+          <div><div class="fi-time">09:14</div><div class="fi-src">The Block</div></div>
+          <div class="fi-body"><h3>Tokenized US Treasury products surpass $4B in total AUM</h3><p>Institutional demand for on-chain government bonds continues to accelerate across multiple issuers.</p></div>
         </li>
       </ul>
       <aside class="sidebar">
@@ -1067,7 +976,7 @@ function getPrimaryTag(tags: string[]): string | null {
         </div>
       </aside>
     </div>
-    <div class="explore"><a href="/news">See all market updates <span class="chev">›</span></a></div>
+    <div class="explore"><a href="#">See all market updates <span class="chev">›</span></a></div>
   </section>
 
   <!-- ═══ 7. SUBSCRIPTION BREAKER ═══ -->
@@ -1091,90 +1000,36 @@ function getPrimaryTag(tags: string[]): string | null {
   </div>
 
   <!-- ═══ 8. REPORTING & ANALYSIS ═══ -->
-  <section class="reporting-section reveal">
+  <section class="ed-sec reveal">
     <div class="sdiv"><h2>Reporting &amp; Analysis</h2></div>
     <div class="tabs" style="margin-bottom:22px">
       <button class="tab ed-tab on" data-filter="all">Highlights</button>
       <button class="tab ed-tab" data-filter="interview">Interviews</button>
       <button class="tab ed-tab" data-filter="analysis">Analysis</button>
     </div>
-
-    {featuredReport && (
-      <div class="reporting-featured" data-type="report">
-        <div class="reporting-featured__visual">
-          <img src={featuredReport.thumbnailUrl || "Report Mockup Image.png"} alt={featuredReport.title}>
-          <span class="reporting-featured__badge">Special Report</span>
-        </div>
-        <div class="reporting-featured__content">
-          <div class="type">Featured Report · {formatDate(featuredReport.publishDate)}</div>
-          <h3>{featuredReport.title}</h3>
-          <p class="reporting-featured__excerpt">{featuredReport.summary || featuredReport.subtitle || ""}</p>
-          <div class="meta">{calculateReadTime(featuredReport.content)} min read · <a href={featuredReport.webUrl} target="_blank" rel="noopener">Read article</a></div>
-        </div>
+    <div class="ed-feat" data-type="report">
+      <div class="ef-vis"><img src="Report Mockup Image.png" alt="25 Expert Outlooks for 2026"><span class="ef-badge">Special Report</span></div>
+      <div class="ef-txt">
+        <div class="type">Featured Report · Jan 2026</div>
+        <h3>25 Expert Outlooks for 2026</h3>
+        <p class="exc">The industry's foremost experts share their perspectives on tokenization, stablecoins, regulation and institutional adoption for the year ahead in digital assets.</p>
+        <div class="meta">42 min read · Download PDF</div>
       </div>
-    )}
-
-    {/* Highlights Tab - Show highlight articles */}
-    <div class="reporting-grid" data-tab-content="highlights">
-      {highlightArticles.length > 0 ? (
-        highlightArticles.map((article) => (
-          <div class="reporting-card" data-type={article.tags.includes("interview") ? "interview" : article.tags.includes("analysis") ? "analysis" : "highlight"}>
-            <div class="reporting-card__visual">
-              <img src={article.thumbnailUrl || "https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/2e4108e9-7cc0-435b-b282-730fd3361e78/6.png?t=1754489294"} alt={article.title}>
-              <span class="badge">{getPrimaryTag(article.tags) || "Article"}</span>
-            </div>
-            <div class="reporting-card__body">
-              <h3>{article.title}</h3>
-              <p>{article.summary || article.subtitle || ""}</p>
-              <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
-            </div>
-          </div>
-        ))
-      ) : (
-        <p style="grid-column: 1/-1; color: var(--muted);">No highlight articles found.</p>
-      )}
     </div>
 
-    {/* Interview Tab - Hidden by default */}
-    <div class="reporting-grid" data-tab-content="interview" style="display: none;">
-      {interviewArticles.length > 0 ? (
-        interviewArticles.slice(0, 3).map((article) => (
-          <div class="reporting-card" data-type="interview">
-            <div class="reporting-card__visual">
-              <img src={article.thumbnailUrl || "https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/2e4108e9-7cc0-435b-b282-730fd3361e78/6.png?t=1754489294"} alt={article.title}>
-              <span class="badge">Interview</span>
-            </div>
-            <div class="reporting-card__body">
-              <h3>{article.title}</h3>
-              <p>{article.summary || article.subtitle || ""}</p>
-              <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
-            </div>
-          </div>
-        ))
-      ) : (
-        <p style="grid-column: 1/-1; color: var(--muted);">No interview articles found.</p>
-      )}
-    </div>
-
-    {/* Analysis Tab - Hidden by default */}
-    <div class="reporting-grid" data-tab-content="analysis" style="display: none;">
-      {analysisArticles.length > 0 ? (
-        analysisArticles.slice(0, 3).map((article) => (
-          <div class="reporting-card" data-type="analysis">
-            <div class="reporting-card__visual">
-              <img src={article.thumbnailUrl || "https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/dd8817e8-54dc-496e-857f-100b3fab9ba1/6.png?t=1753295324"} alt={article.title}>
-              <span class="badge">{getPrimaryTag(article.tags) || "Analysis"}</span>
-            </div>
-            <div class="reporting-card__body">
-              <h3>{article.title}</h3>
-              <p>{article.summary || article.subtitle || ""}</p>
-              <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
-            </div>
-          </div>
-        ))
-      ) : (
-        <p style="grid-column: 1/-1; color: var(--muted);">No analysis articles found.</p>
-      )}
+    <div class="ed-grid">
+      <div class="edc" data-type="interview">
+        <div class="edc-vis"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/2e4108e9-7cc0-435b-b282-730fd3361e78/6.png?t=1754489294" alt="BBVA Interview"><span class="badge">Interview</span></div>
+        <div class="edc-body"><h3>Inside BBVA's Crypto Playbook — Interview with Francisco Maroto</h3><p>How Europe's digital assets pioneer went from early blockchain experiments to launching MiCA-regulated crypto services across the continent.</p><div class="meta">Aug 6 · 8 min read</div></div>
+      </div>
+      <div class="edc" data-type="analysis">
+        <div class="edc-vis"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/dd8817e8-54dc-496e-857f-100b3fab9ba1/6.png?t=1753295324" alt="Banque de France Ethereum"><span class="badge">Exclusive</span></div>
+        <div class="edc-body"><h3>Banque de France Eyes Ethereum for Onchain Repo Markets</h3><p>The central bank is developing a repo system fully built on Ethereum, with full-scale testing expected before end of 2025.</p><div class="meta">Jul 23 · 7 min read</div></div>
+      </div>
+      <div class="edc" data-type="analysis">
+        <div class="edc-vis"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/c30b80be-29e1-4d2d-9544-45928d30525d/ibm.png?t=1761763785" alt="IBM Digital Asset Haven"><span class="badge">News</span></div>
+        <div class="edc-body"><h3>IBM Debuts 'Digital Asset Haven' Platform With Dfns</h3><p>Tech giant launches a platform for institutions to custody, manage, and settle digital assets — easing institutional access.</p><div class="meta">Oct 30 · 5 min read</div></div>
+      </div>
     </div>
     <div class="explore"><a href="#">See all research <span class="chev">›</span></a></div>
   </section>
@@ -1321,7 +1176,7 @@ clocks();setInterval(clocks,30000);
 // ═══ Market Flow Tabs ═══
 const flowTabs=document.getElementById('flowTabs');
 if(flowTabs){
-  const items=document.querySelectorAll('.marketflow-list .marketflow-item');
+  const items=document.querySelectorAll('.flow-list .fi');
   flowTabs.querySelectorAll('.tab').forEach(t=>{
     t.addEventListener('click',()=>{
       flowTabs.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
@@ -1329,7 +1184,7 @@ if(flowTabs){
       const f=t.dataset.f;
       items.forEach(i=>{
         const cats=(i.dataset.cat||'').split(' ');
-        const own=i.classList.contains('marketflow-item--own');
+        const own=i.classList.contains('own');
         if(f==='latest')i.style.display=own?'none':'';
         else if(f==='blockstories')i.style.display=own?'':'none';
         else i.style.display=cats.includes(f)&&!own?'':'none';
@@ -1340,36 +1195,16 @@ if(flowTabs){
 }
 
 // ═══ Editorial Tabs ═══
-document.querySelectorAll('.ed-tab').forEach(t => {
-  t.addEventListener('click', () => {
-    document.querySelectorAll('.ed-tab').forEach(b => b.classList.remove('on'));
+document.querySelectorAll('.ed-tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.ed-tab').forEach(b=>b.classList.remove('on'));
     t.classList.add('on');
-    const f = t.dataset.filter;
-    const sec = t.closest('.reporting-section');
-    const feat = sec.querySelector('.reporting-featured');
-    const highlightsGrid = sec.querySelector('[data-tab-content="highlights"]');
-    const interviewGrid = sec.querySelector('[data-tab-content="interview"]');
-    const analysisGrid = sec.querySelector('[data-tab-content="analysis"]');
-
-    if (f === 'all') {
-      // Highlights tab: show featured report + highlight articles
-      if (feat) feat.style.display = '';
-      if (highlightsGrid) highlightsGrid.style.display = '';
-      if (interviewGrid) interviewGrid.style.display = 'none';
-      if (analysisGrid) analysisGrid.style.display = 'none';
-    } else if (f === 'interview') {
-      // Interviews tab: hide featured, show interview articles
-      if (feat) feat.style.display = 'none';
-      if (highlightsGrid) highlightsGrid.style.display = 'none';
-      if (interviewGrid) interviewGrid.style.display = '';
-      if (analysisGrid) analysisGrid.style.display = 'none';
-    } else if (f === 'analysis') {
-      // Analysis tab: hide featured, show analysis articles
-      if (feat) feat.style.display = 'none';
-      if (highlightsGrid) highlightsGrid.style.display = 'none';
-      if (interviewGrid) interviewGrid.style.display = 'none';
-      if (analysisGrid) analysisGrid.style.display = '';
-    }
+    const f=t.dataset.filter;
+    const sec=t.closest('.ed-sec');
+    const feat=sec.querySelector('.ed-feat');
+    const cards=sec.querySelectorAll('.edc');
+    if(f==='all'){feat.style.display='';cards.forEach(c=>c.style.display='')}
+    else{feat.style.display=feat.dataset.type===f?'':'none';cards.forEach(c=>{c.style.display=c.dataset.type===f?'':'none'})}
   });
 });
 
@@ -1383,7 +1218,7 @@ if(evScroll&&evArrow){
 // ═══ Briefing Toggle ═══
 const briefingTabs=document.getElementById('briefingTabs');
 if(briefingTabs){
-  const panels=document.querySelectorAll('.briefing-card[data-briefing]');
+  const panels=document.querySelectorAll('.sf[data-briefing]');
   briefingTabs.querySelectorAll('.tab').forEach(t=>{
     t.addEventListener('click',()=>{
       briefingTabs.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
@@ -1397,31 +1232,7 @@ if(briefingTabs){
 // ═══ Scroll Reveal Animations ═══
 const observer=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
-
-// ═══ Client-side Briefing Fetch (fallback if SSR failed) ═══
-async function loadBriefings(){
-  const instPanel=document.querySelector('[data-briefing="institutional"]');
-  const cryptoPanel=document.querySelector('[data-briefing="crypto"]');
-  const hasInst=instPanel&&!instPanel.querySelector('h2')?.textContent?.includes('No briefing');
-  const hasCrypto=cryptoPanel&&!cryptoPanel.querySelector('h2')?.textContent?.includes('No briefing');
-  if(hasInst&&hasCrypto)return;
-  console.log('[API] Fetching articles for: Briefing fallback (client-side)');
-  try{
-    const res=await fetch('/api/articles?limit=20');
-    if(!res.ok)return;
-    const data=await res.json();
-    if(!data.articles||!data.articles.length)return;
-    const instPubId='pub_ea97d244-f74b-49b3-a7c0-17f14829e241';
-    const cryptoPubId='pub_01715eca-8680-4c80-8348-b34552fe2aaf';
-    const instArticle=data.articles.find(a=>a.beehiivPublicationId===instPubId);
-    const cryptoArticle=data.articles.find(a=>a.beehiivPublicationId===cryptoPubId);
-    if(instArticle&&!hasInst)location.reload();
-    if(cryptoArticle&&!hasCrypto)location.reload();
-  }catch(e){console.error('Failed to load briefings:',e);}
-}
-if(document.querySelector('[data-briefing] h2')?.textContent?.includes('No briefing')){
-  loadBriefings();
-}
 </script>
 
-</Layout>
+</body>
+</html>
