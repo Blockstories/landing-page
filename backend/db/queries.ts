@@ -169,6 +169,87 @@ export async function getNewestArticles(count: number = 10, offset: number = 0):
 }
 
 /**
+ * Get articles by tags with their people
+ * Uses a single JOIN query to avoid N+1 problem
+ * Only returns confirmed articles
+ * Results are cached for performance
+ * @param count - Number of articles to fetch (default: 10)
+ * @param tags - Optional array of tags to filter by (OR logic: articles matching ANY tag are returned)
+ */
+export async function getArticlesByTags(
+  count: number = 10,
+  tags?: string[]
+): Promise<Article[]> {
+  // Build cache key that includes tags for differentiation
+  const cacheKey = getCacheKey("tags", count, tags?.sort().join(",") ?? "all");
+
+  const cached = getCached<Article[]>(cacheKey);
+  if (cached) return cached;
+
+  // Build query with optional tag filtering
+  let query = `SELECT
+    a.*,
+    p.id as person_id, p.name, p.slug, p.image_url, p.company,
+    ap.role
+  FROM articles a
+  LEFT JOIN article_people ap ON a.id = ap.article_id
+  LEFT JOIN people p ON ap.person_id = p.id
+  WHERE a.status = 'confirmed'`;
+  const params: (string | number)[] = [];
+
+  // Add tag filtering if tags are provided (OR logic - match ANY tag)
+  if (tags && tags.length > 0) {
+    const tagConditions = tags.map(() => `json_extract(a.tags, '$') LIKE ?`).join(" OR ");
+    query += ` AND (${tagConditions})`;
+    // Each tag is wrapped in quotes for JSON array matching
+    tags.forEach((tag) => params.push(`%"${tag}"%`));
+  }
+
+  query += ` ORDER BY a.publish_date DESC, a.id DESC LIMIT ?`;
+  params.push(count);
+
+  const result = await db.execute(query, params);
+
+  // Group rows by article and collect people
+  const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured">; people: Array<{ person: Person; role: ArticleRole }> }>();
+
+  for (const row of result.rows) {
+    const articleId = row.id as number;
+
+    if (!articleMap.has(articleId)) {
+      articleMap.set(articleId, {
+        article: mapRowToArticle(row),
+        people: []
+      });
+    }
+
+    // If there's a person (LEFT JOIN may return nulls)
+    if (row.person_id) {
+      const entry = articleMap.get(articleId)!;
+      entry.people.push({
+        person: mapRowToPerson({
+          id: row.person_id,
+          name: row.name,
+          slug: row.slug,
+          image_url: row.image_url,
+          company: row.company
+        }),
+        role: row.role as ArticleRole
+      });
+    }
+  }
+
+  // Convert map to array of complete articles
+  const articles = Array.from(articleMap.values()).map(({ article, people }) =>
+    combineArticleWithPeople(article, people)
+  );
+
+  setCached(cacheKey, articles);
+
+  return articles;
+}
+
+/**
  * Get single article by publication + post ID
  */
 export async function getArticleByPublicationIdAndPostId(
