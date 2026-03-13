@@ -181,7 +181,7 @@ export async function getArticlesByTags(
   tags?: string[]
 ): Promise<Article[]> {
   // Build cache key that includes tags for differentiation
-  const cacheKey = getCacheKey("tags", count, tags?.sort().join(",") ?? "all");
+  const cacheKey = getCacheKey("tags", count, tags?.length ? JSON.stringify([...tags].sort()) : "all");
 
   const cached = getCached<Article[]>(cacheKey);
   if (cached) return cached;
