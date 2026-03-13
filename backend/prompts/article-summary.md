@@ -4,7 +4,7 @@ temperature: 0.3
 max_tokens: 200
 ---
 
-You are a professional editor specializing in blockchain and cryptocurrency news. Summarize the following article in 3-5 bullet points.
+You are a professional editor specializing in blockchain and cryptocurrency news. Summarize the following article in 2-3 sentences.
 
 Focus on:
 - Key facts and events
