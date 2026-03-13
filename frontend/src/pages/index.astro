@@ -500,6 +500,7 @@ function getPrimaryTag(tags: string[]): string | null {
   display:grid;grid-template-columns:1.1fr 1fr;gap:0;margin-bottom:22px;
   border-radius:6px;overflow:hidden;background:var(--surface);
   border:1px solid var(--border);cursor:pointer;transition:box-shadow var(--ease);
+  text-decoration:none;color:inherit;
 }
 .reporting-featured:hover{box-shadow:0 8px 40px rgba(0,0,0,.06)}
 .reporting-featured__visual{
@@ -536,6 +537,7 @@ function getPrimaryTag(tags: string[]): string | null {
 .reporting-card{
   background:var(--surface);border:1px solid var(--border);border-radius:4px;
   overflow:hidden;cursor:pointer;transition:all var(--ease);
+  text-decoration:none;color:inherit;display:block;
 }
 .reporting-card:hover{border-color:var(--text-3);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.05)}
 .reporting-card__visual{height:150px;position:relative;overflow:hidden;background:#122B42}
@@ -1114,7 +1116,7 @@ function getPrimaryTag(tags: string[]): string | null {
     </div>
 
     {featuredReport && (
-      <div class="reporting-featured" data-type="report">
+      <a href={featuredReport.webUrl} target="_blank" rel="noopener" class="reporting-featured" data-type="report">
         <div class="reporting-featured__visual">
           <img src={featuredReport.thumbnailUrl || "Report Mockup Image.png"} alt={featuredReport.title}>
           <span class="reporting-featured__badge">Special Report</span>
@@ -1123,16 +1125,16 @@ function getPrimaryTag(tags: string[]): string | null {
           <div class="type">Featured Report · {formatDate(featuredReport.publishDate)}</div>
           <h3>{featuredReport.title}</h3>
           <p class="reporting-featured__excerpt">{featuredReport.shortSummary || featuredReport.summary || featuredReport.subtitle || ""}</p>
-          <div class="meta">{calculateReadTime(featuredReport.content)} min read · <a href={featuredReport.webUrl} target="_blank" rel="noopener">Read article</a></div>
+          <div class="meta">{calculateReadTime(featuredReport.content)} min read · Read article →</div>
         </div>
-      </div>
+      </a>
     )}
 
     {/* Highlights Tab - Show highlight articles */}
     <div class="reporting-grid" data-tab-content="highlights">
       {highlightArticles.length > 0 ? (
         highlightArticles.map((article) => (
-          <div class="reporting-card" data-type={article.tags.includes("interview") ? "interview" : article.tags.includes("analysis") ? "analysis" : "highlight"}>
+          <a href={article.webUrl} target="_blank" rel="noopener" class="reporting-card" data-type={article.tags.includes("interview") ? "interview" : article.tags.includes("analysis") ? "analysis" : "highlight"}>
             <div class="reporting-card__visual">
               <img src={article.thumbnailUrl || "https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/2e4108e9-7cc0-435b-b282-730fd3361e78/6.png?t=1754489294"} alt={article.title}>
               <span class="badge">{getPrimaryTag(article.tags) || "Article"}</span>
@@ -1142,7 +1144,7 @@ function getPrimaryTag(tags: string[]): string | null {
               <p>{article.shortSummary || article.summary || article.subtitle || ""}</p>
               <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
             </div>
-          </div>
+          </a>
         ))
       ) : (
         <p style="grid-column: 1/-1; color: var(--muted);">No highlight articles found.</p>
@@ -1153,7 +1155,7 @@ function getPrimaryTag(tags: string[]): string | null {
     <div class="reporting-grid" data-tab-content="interview" style="display: none;">
       {interviewArticles.length > 0 ? (
         interviewArticles.slice(0, 3).map((article) => (
-          <div class="reporting-card" data-type="interview">
+          <a href={article.webUrl} target="_blank" rel="noopener" class="reporting-card" data-type="interview">
             <div class="reporting-card__visual">
               <img src={article.thumbnailUrl || "https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/2e4108e9-7cc0-435b-b282-730fd3361e78/6.png?t=1754489294"} alt={article.title}>
               <span class="badge">Interview</span>
@@ -1163,7 +1165,7 @@ function getPrimaryTag(tags: string[]): string | null {
               <p>{article.shortSummary || article.summary || article.subtitle || ""}</p>
               <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
             </div>
-          </div>
+          </a>
         ))
       ) : (
         <p style="grid-column: 1/-1; color: var(--muted);">No interview articles found.</p>
@@ -1174,7 +1176,7 @@ function getPrimaryTag(tags: string[]): string | null {
     <div class="reporting-grid" data-tab-content="analysis" style="display: none;">
       {analysisArticles.length > 0 ? (
         analysisArticles.slice(0, 3).map((article) => (
-          <div class="reporting-card" data-type="analysis">
+          <a href={article.webUrl} target="_blank" rel="noopener" class="reporting-card" data-type="analysis">
             <div class="reporting-card__visual">
               <img src={article.thumbnailUrl || "https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/dd8817e8-54dc-496e-857f-100b3fab9ba1/6.png?t=1753295324"} alt={article.title}>
               <span class="badge">{getPrimaryTag(article.tags) || "Analysis"}</span>
@@ -1184,7 +1186,7 @@ function getPrimaryTag(tags: string[]): string | null {
               <p>{article.shortSummary || article.summary || article.subtitle || ""}</p>
               <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
             </div>
-          </div>
+          </a>
         ))
       ) : (
         <p style="grid-column: 1/-1; color: var(--muted);">No analysis articles found.</p>
