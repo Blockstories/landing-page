@@ -853,11 +853,11 @@ function getPrimaryTag(tags: string[]): string | null {
       <div class="briefing-band-text">
         <div class="briefing-tag">Institutional Briefing · {formatDate(institutionalBriefing.publishDate)}</div>
         <h2>{institutionalBriefing.title}</h2>
-        <div class="briefing-meta">By {institutionalBriefing.authors.map(a => a.name).join(" & ")} · {calculateReadTime(institutionalBriefing.content)}min structured read</div>
+        <div class="briefing-meta">By {institutionalBriefing.authors.filter((author, idx, arr) => arr.findIndex(a => a.name === author.name) === idx).map(a => a.name).join(" & ")} · {calculateReadTime(institutionalBriefing.content)}min structured read</div>
       </div>
       <div class="briefing-band-vis">
         <div class="briefing-authors">
-          {institutionalBriefing.authors.map((author, idx) => (
+          {institutionalBriefing.authors.filter((author, idx, arr) => arr.findIndex(a => a.name === author.name) === idx).map((author, idx) => (
           <div>
             {author.imageUrl ? (
               <img class="briefing-avatar" src={author.imageUrl} alt={author.name}>
@@ -925,11 +925,11 @@ function getPrimaryTag(tags: string[]): string | null {
       <div class="briefing-band-text">
         <div class="briefing-tag">Crypto Briefing · {formatDate(cryptoBriefing.publishDate)}</div>
         <h2>{cryptoBriefing.title}</h2>
-        <div class="briefing-meta">By {cryptoBriefing.authors.map(a => a.name).join(" & ")} · {calculateReadTime(cryptoBriefing.content)}min structured read</div>
+        <div class="briefing-meta">By {cryptoBriefing.authors.filter((author, idx, arr) => arr.findIndex(a => a.name === author.name) === idx).map(a => a.name).join(" & ")} · {calculateReadTime(cryptoBriefing.content)}min structured read</div>
       </div>
       <div class="briefing-band-vis">
         <div class="briefing-authors">
-          {cryptoBriefing.authors.map((author, idx) => (
+          {cryptoBriefing.authors.filter((author, idx, arr) => arr.findIndex(a => a.name === author.name) === idx).map((author, idx) => (
           <div>
             {author.imageUrl ? (
               <img class="briefing-avatar" src={author.imageUrl} alt={author.name}>
