@@ -1010,7 +1010,7 @@ function getPrimaryTag(tags: string[]): string | null {
     <div class="marketflow-grid">
       <ul class="marketflow-list">
         {marketFlowArticles.length > 0 ? (
-          marketFlowArticles.map((article) => {
+          marketFlowArticles.slice(0, 4).map((article) => {
             const categoryClasses = getCategoryClasses(article.tags);
             const primaryTag = getPrimaryTag(article.tags);
             return (
