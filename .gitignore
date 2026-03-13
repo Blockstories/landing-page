@@ -146,6 +146,9 @@ vite.config.ts.timestamp-*
 .astro/
 dist/
 
+# Vercel
+.vercel/
+
 # Git worktrees
 .worktrees/
 
