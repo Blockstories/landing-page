@@ -414,29 +414,29 @@ function getAuthorRole(index: number, pubId: string): string {
 .cta-badge::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0}
 
 /* ═══ 8. EDITORIAL / REPORTING ═══ */
-.ed-sec{margin-bottom:var(--sp-xl)}
-.ed-feat{
+.reporting-section{margin-bottom:var(--sp-xl)}
+.reporting-featured{
   display:grid;grid-template-columns:1.1fr 1fr;gap:0;margin-bottom:22px;
   border-radius:6px;overflow:hidden;background:var(--surface);
   border:1px solid var(--border);cursor:pointer;transition:box-shadow var(--ease);
 }
-.ed-feat:hover{box-shadow:0 8px 40px rgba(0,0,0,.06)}
-.ef-vis{
+.reporting-featured:hover{box-shadow:0 8px 40px rgba(0,0,0,.06)}
+.reporting-featured__visual{
   min-height:300px;position:relative;
   background:#F7F8FB;
   display:flex;align-items:center;justify-content:center;padding:28px;
 }
-.ef-vis img{
+.reporting-featured__visual img{
   max-width:100%;max-height:280px;object-fit:contain;
   filter:drop-shadow(0 8px 24px rgba(0,0,0,.12));
   position:relative;z-index:1;
 }
-.ef-badge{position:absolute;top:18px;left:18px;z-index:2;font-family:var(--mono);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border-radius:3px;color:var(--text-2)}
-.ef-txt{padding:40px;display:flex;flex-direction:column;justify-content:center}
-.ef-txt .type{font-family:var(--mono);font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
-.ef-txt h3{font-family:var(--serif);font-size:1.65rem;line-height:1.25;letter-spacing:-.02em;font-weight:400;margin-bottom:12px}
-.ef-txt .exc{font-size:.9rem;line-height:1.65;color:var(--text-2);margin-bottom:18px}
-.ef-txt .meta{font-family:var(--mono);font-size:.65rem;color:var(--text-3)}
+.reporting-featured__badge{position:absolute;top:18px;left:18px;z-index:2;font-family:var(--mono);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border-radius:3px;color:var(--text-2)}
+.reporting-featured__content{padding:40px;display:flex;flex-direction:column;justify-content:center}
+.reporting-featured__content .type{font-family:var(--mono);font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.reporting-featured__content h3{font-family:var(--serif);font-size:1.65rem;line-height:1.25;letter-spacing:-.02em;font-weight:400;margin-bottom:12px}
+.reporting-featured__excerpt{font-size:.9rem;line-height:1.65;color:var(--text-2);margin-bottom:18px}
+.reporting-featured__content .meta{font-family:var(--mono);font-size:.65rem;color:var(--text-3)}
 
 /* Pull-quote social proof */
 .pull-quote{
@@ -451,19 +451,19 @@ function getAuthorRole(index: number, pubId: string): string {
   text-transform:uppercase;color:var(--text-3);font-style:normal;
 }
 
-.ed-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.edc{
+.reporting-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.reporting-card{
   background:var(--surface);border:1px solid var(--border);border-radius:4px;
   overflow:hidden;cursor:pointer;transition:all var(--ease);
 }
-.edc:hover{border-color:var(--text-3);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.05)}
-.edc-vis{height:150px;position:relative;overflow:hidden;background:#122B42}
-.edc-vis img{width:100%;height:100%;object-fit:cover;display:block}
-.edc-vis .badge{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:.45rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:2px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);color:rgba(255,255,255,.8)}
-.edc-body{padding:18px 20px 22px}
-.edc-body h3{font-family:var(--serif);font-size:1.1rem;font-weight:400;line-height:1.35;margin-bottom:7px}
-.edc-body p{font-size:.78rem;line-height:1.55;color:var(--text-2);margin-bottom:10px}
-.edc-body .meta{font-family:var(--mono);font-size:.6rem;color:var(--text-3);letter-spacing:.02em}
+.reporting-card:hover{border-color:var(--text-3);transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.05)}
+.reporting-card__visual{height:150px;position:relative;overflow:hidden;background:#122B42}
+.reporting-card__visual img{width:100%;height:100%;object-fit:cover;display:block}
+.reporting-card__visual .badge{position:absolute;top:12px;left:12px;font-family:var(--mono);font-size:.45rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:2px;background:rgba(255,255,255,.12);backdrop-filter:blur(8px);color:rgba(255,255,255,.8)}
+.reporting-card__body{padding:18px 20px 22px}
+.reporting-card__body h3{font-family:var(--serif);font-size:1.1rem;font-weight:400;line-height:1.35;margin-bottom:7px}
+.reporting-card__body p{font-size:.78rem;line-height:1.55;color:var(--text-2);margin-bottom:10px}
+.reporting-card__body .meta{font-family:var(--mono);font-size:.6rem;color:var(--text-3);letter-spacing:.02em}
 
 /* ═══ 9. DATA SECTION ═══ */
 .data-sec{
@@ -634,9 +634,9 @@ function getAuthorRole(index: number, pubId: string): string {
   .marketflow-grid{grid-template-columns:1fr}
   .marketflow-list{border-right:none;padding-right:0}
   .sidebar{padding-left:0;padding-top:28px;border-top:1px solid var(--border)}
-  .ed-feat{grid-template-columns:1fr}
-  .ef-vis{min-height:200px}
-  .ed-grid{grid-template-columns:1fr 1fr}
+  .reporting-featured{grid-template-columns:1fr}
+  .reporting-featured__visual{min-height:200px}
+  .reporting-grid{grid-template-columns:1fr 1fr}
   .d-stats{grid-template-columns:1fr 1fr}
   .d-tables{grid-template-columns:1fr}
   .flagship{grid-template-columns:1fr}
@@ -665,7 +665,7 @@ function getAuthorRole(index: number, pubId: string): string {
   .briefing-summary-section{padding:20px 20px}
   .briefing-featured{padding:18px 20px}
   .briefing-footer{padding:12px 20px}
-  .ed-grid{grid-template-columns:1fr}
+  .reporting-grid{grid-template-columns:1fr}
   .ev-video{height:200px}
   .ev-v-title{font-size:1.2rem}
   .ev-v-stats{display:none}
@@ -1007,35 +1007,35 @@ function getAuthorRole(index: number, pubId: string): string {
   </div>
 
   <!-- ═══ 8. REPORTING & ANALYSIS ═══ -->
-  <section class="ed-sec reveal">
+  <section class="reporting-section reveal">
     <div class="sdiv"><h2>Reporting &amp; Analysis</h2></div>
     <div class="tabs" style="margin-bottom:22px">
       <button class="tab ed-tab on" data-filter="all">Highlights</button>
       <button class="tab ed-tab" data-filter="interview">Interviews</button>
       <button class="tab ed-tab" data-filter="analysis">Analysis</button>
     </div>
-    <div class="ed-feat" data-type="report">
-      <div class="ef-vis"><img src="Report Mockup Image.png" alt="25 Expert Outlooks for 2026"><span class="ef-badge">Special Report</span></div>
-      <div class="ef-txt">
+    <div class="reporting-featured" data-type="report">
+      <div class="reporting-featured__visual"><img src="Report Mockup Image.png" alt="25 Expert Outlooks for 2026"><span class="reporting-featured__badge">Special Report</span></div>
+      <div class="reporting-featured__content">
         <div class="type">Featured Report · Jan 2026</div>
         <h3>25 Expert Outlooks for 2026</h3>
-        <p class="exc">The industry's foremost experts share their perspectives on tokenization, stablecoins, regulation and institutional adoption for the year ahead in digital assets.</p>
+        <p class="reporting-featured__excerpt">The industry's foremost experts share their perspectives on tokenization, stablecoins, regulation and institutional adoption for the year ahead in digital assets.</p>
         <div class="meta">42 min read · Download PDF</div>
       </div>
     </div>
 
-    <div class="ed-grid">
-      <div class="edc" data-type="interview">
-        <div class="edc-vis"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/2e4108e9-7cc0-435b-b282-730fd3361e78/6.png?t=1754489294" alt="BBVA Interview"><span class="badge">Interview</span></div>
-        <div class="edc-body"><h3>Inside BBVA's Crypto Playbook — Interview with Francisco Maroto</h3><p>How Europe's digital assets pioneer went from early blockchain experiments to launching MiCA-regulated crypto services across the continent.</p><div class="meta">Aug 6 · 8 min read</div></div>
+    <div class="reporting-grid">
+      <div class="reporting-card" data-type="interview">
+        <div class="reporting-card__visual"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/2e4108e9-7cc0-435b-b282-730fd3361e78/6.png?t=1754489294" alt="BBVA Interview"><span class="badge">Interview</span></div>
+        <div class="reporting-card__body"><h3>Inside BBVA's Crypto Playbook — Interview with Francisco Maroto</h3><p>How Europe's digital assets pioneer went from early blockchain experiments to launching MiCA-regulated crypto services across the continent.</p><div class="meta">Aug 6 · 8 min read</div></div>
       </div>
-      <div class="edc" data-type="analysis">
-        <div class="edc-vis"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/dd8817e8-54dc-496e-857f-100b3fab9ba1/6.png?t=1753295324" alt="Banque de France Ethereum"><span class="badge">Exclusive</span></div>
-        <div class="edc-body"><h3>Banque de France Eyes Ethereum for Onchain Repo Markets</h3><p>The central bank is developing a repo system fully built on Ethereum, with full-scale testing expected before end of 2025.</p><div class="meta">Jul 23 · 7 min read</div></div>
+      <div class="reporting-card" data-type="analysis">
+        <div class="reporting-card__visual"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/dd8817e8-54dc-496e-857f-100b3fab9ba1/6.png?t=1753295324" alt="Banque de France Ethereum"><span class="badge">Exclusive</span></div>
+        <div class="reporting-card__body"><h3>Banque de France Eyes Ethereum for Onchain Repo Markets</h3><p>The central bank is developing a repo system fully built on Ethereum, with full-scale testing expected before end of 2025.</p><div class="meta">Jul 23 · 7 min read</div></div>
       </div>
-      <div class="edc" data-type="analysis">
-        <div class="edc-vis"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/c30b80be-29e1-4d2d-9544-45928d30525d/ibm.png?t=1761763785" alt="IBM Digital Asset Haven"><span class="badge">News</span></div>
-        <div class="edc-body"><h3>IBM Debuts 'Digital Asset Haven' Platform With Dfns</h3><p>Tech giant launches a platform for institutions to custody, manage, and settle digital assets — easing institutional access.</p><div class="meta">Oct 30 · 5 min read</div></div>
+      <div class="reporting-card" data-type="analysis">
+        <div class="reporting-card__visual"><img src="https://beehiiv-images-production.s3.amazonaws.com/uploads/asset/file/c30b80be-29e1-4d2d-9544-45928d30525d/ibm.png?t=1761763785" alt="IBM Digital Asset Haven"><span class="badge">News</span></div>
+        <div class="reporting-card__body"><h3>IBM Debuts 'Digital Asset Haven' Platform With Dfns</h3><p>Tech giant launches a platform for institutions to custody, manage, and settle digital assets — easing institutional access.</p><div class="meta">Oct 30 · 5 min read</div></div>
       </div>
     </div>
     <div class="explore"><a href="#">See all research <span class="chev">›</span></a></div>
@@ -1207,9 +1207,9 @@ document.querySelectorAll('.ed-tab').forEach(t=>{
     document.querySelectorAll('.ed-tab').forEach(b=>b.classList.remove('on'));
     t.classList.add('on');
     const f=t.dataset.filter;
-    const sec=t.closest('.ed-sec');
-    const feat=sec.querySelector('.ed-feat');
-    const cards=sec.querySelectorAll('.edc');
+    const sec=t.closest('.reporting-section');
+    const feat=sec.querySelector('.reporting-featured');
+    const cards=sec.querySelectorAll('.reporting-card');
     if(f==='all'){feat.style.display='';cards.forEach(c=>c.style.display='')}
     else{feat.style.display=feat.dataset.type===f?'':'none';cards.forEach(c=>{c.style.display=c.dataset.type===f?'':'none'})}
   });
