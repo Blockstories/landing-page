@@ -1005,7 +1005,7 @@ function getPrimaryTag(tags: string[]): string | null {
                 </div>
                 <div class="marketflow-item__body">
                   <h3><a href={article.webUrl} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{article.title}</a></h3>
-                  <p>{article.summary || article.subtitle || ''}</p>
+                  <p>{article.shortSummary || article.summary || article.subtitle || ''}</p>
                   {primaryTag && <span class="marketflow-item__tag">{primaryTag}</span>}
                 </div>
               </li>
@@ -1108,7 +1108,7 @@ function getPrimaryTag(tags: string[]): string | null {
         <div class="reporting-featured__content">
           <div class="type">Featured Report · {formatDate(featuredReport.publishDate)}</div>
           <h3>{featuredReport.title}</h3>
-          <p class="reporting-featured__excerpt">{featuredReport.summary || featuredReport.subtitle || ""}</p>
+          <p class="reporting-featured__excerpt">{featuredReport.shortSummary || featuredReport.summary || featuredReport.subtitle || ""}</p>
           <div class="meta">{calculateReadTime(featuredReport.content)} min read · <a href={featuredReport.webUrl} target="_blank" rel="noopener">Read article</a></div>
         </div>
       </div>
@@ -1125,7 +1125,7 @@ function getPrimaryTag(tags: string[]): string | null {
             </div>
             <div class="reporting-card__body">
               <h3>{article.title}</h3>
-              <p>{article.summary || article.subtitle || ""}</p>
+              <p>{article.shortSummary || article.summary || article.subtitle || ""}</p>
               <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
             </div>
           </div>
@@ -1146,7 +1146,7 @@ function getPrimaryTag(tags: string[]): string | null {
             </div>
             <div class="reporting-card__body">
               <h3>{article.title}</h3>
-              <p>{article.summary || article.subtitle || ""}</p>
+              <p>{article.shortSummary || article.summary || article.subtitle || ""}</p>
               <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
             </div>
           </div>
@@ -1167,7 +1167,7 @@ function getPrimaryTag(tags: string[]): string | null {
             </div>
             <div class="reporting-card__body">
               <h3>{article.title}</h3>
-              <p>{article.summary || article.subtitle || ""}</p>
+              <p>{article.shortSummary || article.summary || article.subtitle || ""}</p>
               <div class="meta">{formatDate(article.publishDate)} · {calculateReadTime(article.content)} min read</div>
             </div>
           </div>

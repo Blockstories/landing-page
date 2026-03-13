@@ -200,23 +200,25 @@ export async function getArticlesByTags(
 
   if (tags && tags.length > 0) {
     // Use indexed article_tags table for efficient tag filtering
+    // First get distinct article IDs to avoid LIMIT issues with JOINs
     const tagPlaceholders = tags.map(() => "?").join(", ");
-    const query = `SELECT
-      a.*,
-      p.id as person_id, p.name, p.slug, p.image_url, p.company,
-      ap.role
+    const idQuery = `SELECT DISTINCT a.id
     FROM articles a
     INNER JOIN article_tags at ON a.id = at.article_id
-    LEFT JOIN article_people ap ON a.id = ap.article_id
-    LEFT JOIN people p ON ap.person_id = p.id
     WHERE a.status = 'confirmed'
       AND at.tag IN (${tagPlaceholders})
     ORDER BY a.publish_date DESC, a.id DESC
     LIMIT ?`;
 
-    result = await db.execute(query, [...tags, count]);
-  } else {
-    // No tags filter - fetch all confirmed articles
+    const idResult = await db.execute(idQuery, [...tags, count]);
+    const articleIds = idResult.rows.map((row: { id: number }) => row.id);
+
+    if (articleIds.length === 0) {
+      return [];
+    }
+
+    // Now fetch full article data with people for these IDs
+    const idPlaceholders = articleIds.map(() => "?").join(", ");
     const query = `SELECT
       a.*,
       p.id as person_id, p.name, p.slug, p.image_url, p.company,
@@ -224,11 +226,38 @@ export async function getArticlesByTags(
     FROM articles a
     LEFT JOIN article_people ap ON a.id = ap.article_id
     LEFT JOIN people p ON ap.person_id = p.id
-    WHERE a.status = 'confirmed'
-    ORDER BY a.publish_date DESC, a.id DESC
+    WHERE a.id IN (${idPlaceholders})
+    ORDER BY a.publish_date DESC, a.id DESC`;
+
+    result = await db.execute(query, articleIds);
+  } else {
+    // No tags filter - fetch all confirmed articles
+    // First get distinct article IDs to avoid LIMIT issues with JOINs
+    const idQuery = `SELECT id FROM articles
+    WHERE status = 'confirmed'
+    ORDER BY publish_date DESC, id DESC
     LIMIT ?`;
 
-    result = await db.execute(query, [count]);
+    const idResult = await db.execute(idQuery, [count]);
+    const articleIds = idResult.rows.map((row: { id: number }) => row.id);
+
+    if (articleIds.length === 0) {
+      return [];
+    }
+
+    // Now fetch full article data with people for these IDs
+    const idPlaceholders = articleIds.map(() => "?").join(", ");
+    const query = `SELECT
+      a.*,
+      p.id as person_id, p.name, p.slug, p.image_url, p.company,
+      ap.role
+    FROM articles a
+    LEFT JOIN article_people ap ON a.id = ap.article_id
+    LEFT JOIN people p ON ap.person_id = p.id
+    WHERE a.id IN (${idPlaceholders})
+    ORDER BY a.publish_date DESC, a.id DESC`;
+
+    result = await db.execute(query, articleIds);
   }
 
   // Group rows by article and collect people
