@@ -26,3 +26,13 @@ export interface Article {
   shortSummary?: string;
   content?: string;
 }
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  description: string;
+  source: string;
+  createdAt: string;
+  url: string;
+  theme: string;
+}

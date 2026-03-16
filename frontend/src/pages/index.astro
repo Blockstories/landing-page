@@ -2,6 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import { getArticlesByPublication, getArticlesByTags, getArticleByPublicationIdAndPostId } from '../../../backend/db/queries.js';
 import { getLatestNews, getNewsForThemes, MappedRecord } from '../../../backend/services/softrService.js';
+import type { NewsItem } from '../types/content.js';
 
 const pageStart = performance.now();
 console.log(`[index.astro] Starting render`);
@@ -90,16 +91,8 @@ if (!isBuildTime) {
   }
 }
 
-// News Aggregator Types & Fetch
-interface NewsItem {
-  id: string;
-  title: string;
-  description: string;
-  source: string;
-  createdAt: string;
-  url: string;
-  theme: string;
-}
+// News Aggregator Fetch
+// Note: NewsItem type is imported from '../types/content.js'
 
 // Group news items by theme and limit to 5 per theme
 function groupNewsByTheme(items: NewsItem[]): Map<string, NewsItem[]> {
