@@ -15,8 +15,8 @@ export interface MappedRecordsResponse extends Omit<RecordsResponse, 'data'> {
 }
 
 export interface MappedRecord extends Omit<Record, 'fields'> {
-  fields: Record<string, unknown>;
-  _originalFields?: Record<string, unknown>;
+  fields: { [key: string]: unknown };
+  _originalFields?: { [key: string]: unknown };
 }
 
 /**
@@ -74,7 +74,7 @@ export function transformRecordFields(
     return record as MappedRecord;
   }
 
-  const transformedFields: Record<string, unknown> = {};
+  const transformedFields: { [key: string]: unknown } = {};
 
   Object.keys(record.fields).forEach((fieldId) => {
     const fieldName = fieldMapping[fieldId] || fieldId;
@@ -130,12 +130,80 @@ export async function getRecordsRaw(
 const NEWS_DATABASE_ID = process.env.SOFTR_DATABASE_ID || "";
 const NEWS_TABLE_ID = process.env.SOFTR_TABLE_ID || "";
 
+// Theme-to-view mapping for Market Flow tabs
+// Each theme maps to a specific Softr view ID that filters by that theme
+const THEME_VIEW_MAP: { [key: string]: string } = {
+  default: process.env.SOFTR_VIEW_CREATEDAT_ID || process.env.SOFTR_VIEW_ID || "",
+  tokenization: process.env.SOFTR_VIEW_TOKENIZATION_CREATEDAT_ID || "",
+  stablecoins: process.env.SOFTR_VIEW_STABLECOINS_CREATEDAT_ID || "",
+  regulation: process.env.SOFTR_VIEW_REGULATION_CREATEDAT_ID || "",
+  "market-structure": process.env.SOFTR_VIEW_MARKETSTRUCTURE_CREATEDAT_ID || "",
+};
+
 /**
- * Get news records with mapped field names
- * Specialized function for the news aggregator with hardcoded table/database IDs
+ * Get latest news records (for "Latest" tab)
+ * Uses the default createdAt view to get the most recent news across all themes
  */
-export async function getNewsWithMappedFields(
-  options: GetRecordsOptions = {}
+export async function getLatestNews(
+  options: Omit<GetRecordsOptions, "viewId"> = {}
 ): Promise<MappedRecordsResponse> {
-  return getRecordsWithMappedFields(NEWS_DATABASE_ID, NEWS_TABLE_ID, options);
+  const viewId = THEME_VIEW_MAP.default;
+
+  if (!viewId) {
+    console.warn("[softrService] No default view ID found for latest news");
+  }
+
+  return getRecordsWithMappedFields(NEWS_DATABASE_ID, NEWS_TABLE_ID, {
+    ...options,
+    viewId,
+  });
+}
+
+/**
+ * Get news records filtered by theme
+ * Maps theme names to specific Softr views for proper separation of concerns
+ * @param theme - The theme/category name (e.g., 'tokenization', 'stablecoins', 'regulation', 'market-structure')
+ * @param options - Additional query options
+ */
+export async function getNewsByTheme(
+  theme: string,
+  options: Omit<GetRecordsOptions, "viewId"> = {}
+): Promise<MappedRecordsResponse> {
+  const normalizedTheme = theme.toLowerCase().trim();
+  const viewId = THEME_VIEW_MAP[normalizedTheme] || THEME_VIEW_MAP.default;
+
+  if (!viewId) {
+    console.warn(`[softrService] No view ID found for theme: ${theme}`);
+  }
+
+  return getRecordsWithMappedFields(NEWS_DATABASE_ID, NEWS_TABLE_ID, {
+    ...options,
+    viewId,
+  });
+}
+
+/**
+ * Get news records for multiple themes in a single call
+ * Returns an object with theme names as keys
+ * @param themes - Array of theme names to fetch
+ * @param options - Additional query options per theme
+ */
+export async function getNewsForThemes(
+  themes: string[],
+  options: Omit<GetRecordsOptions, "viewId"> = {}
+): Promise<{ [key: string]: MappedRecordsResponse }> {
+  const results: { [key: string]: MappedRecordsResponse } = {};
+
+  await Promise.all(
+    themes.map(async (theme) => {
+      try {
+        results[theme] = await getNewsByTheme(theme, options);
+      } catch (error) {
+        console.error(`[softrService] Failed to fetch news for theme: ${theme}`, error);
+        results[theme] = { data: [], metadata: { offset: 0, limit: options.paging?.limit || 10, total: 0 } };
+      }
+    })
+  );
+
+  return results;
 }

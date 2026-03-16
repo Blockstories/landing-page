@@ -1,7 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getArticlesByPublication, getArticlesByTags, getArticleByPublicationIdAndPostId } from '../../../backend/db/queries.js';
-import { getNewsWithMappedFields, MappedRecord } from '../../../backend/services/softrService.js';
+import { getLatestNews, getNewsForThemes, MappedRecord } from '../../../backend/services/softrService.js';
 
 const pageStart = performance.now();
 console.log(`[index.astro] Starting render`);
@@ -116,22 +116,57 @@ function groupNewsByTheme(items: NewsItem[]): Map<string, NewsItem[]> {
   return grouped;
 }
 
-let newsItems: NewsItem[] = [];
+// Market Flow themes that map to Softr views
+const MARKET_FLOW_THEMES = ['tokenization', 'stablecoins', 'regulation', 'market-structure'];
+
+let latestNewsItems: NewsItem[] = [];
 let newsByTheme = new Map<string, NewsItem[]>();
+
+function mapRecordToNewsItem(record: MappedRecord): NewsItem | null {
+  const title = String(record.fields['Title'] || record.fields['title'] || '');
+  if (!title) return null;
+
+  return {
+    id: record.id,
+    title,
+    description: String(record.fields['Description'] || record.fields['description'] || record.fields['Summary'] || record.fields['summary'] || ''),
+    source: String(record.fields['Source'] || record.fields['source'] || record.fields['Publisher'] || record.fields['publisher'] || ''),
+    createdAt: String(record.fields['Created at'] || record.fields['Created At'] || record.fields['created_at'] || record.fields['firstPublished'] || record.created_at || ''),
+    url: String(record.fields['URL'] || record.fields['url'] || record.fields['Link'] || record.fields['link'] || '#'),
+    theme: String(record.fields['Theme'] || record.fields['theme'] || ''),
+  };
+}
+
 if (!isBuildTime) {
   try {
-    const newsResult = await getNewsWithMappedFields({ limit: 100 });
-    newsItems = newsResult.data.map((record: MappedRecord) => ({
-      id: record.id,
-      title: String(record.fields['Title'] || record.fields['title'] || ''),
-      description: String(record.fields['Description'] || record.fields['description'] || record.fields['Summary'] || record.fields['summary'] || ''),
-      source: String(record.fields['Source'] || record.fields['source'] || record.fields['Publisher'] || record.fields['publisher'] || ''),
-      createdAt: String(record.fields['Created at'] || record.fields['Created At'] || record.fields['created_at'] || record.fields['firstPublished'] || record.created_at || ''),
-      url: String(record.fields['URL'] || record.fields['url'] || record.fields['Link'] || record.fields['link'] || '#'),
-      theme: String(record.fields['Theme'] || record.fields['theme'] || ''),
-    })).filter((item: NewsItem) => item.title);
-    newsByTheme = groupNewsByTheme(newsItems);
-    console.log(`[index.astro] Fetched ${newsItems.length} news items, grouped into ${newsByTheme.size} themes`);
+    // Fetch latest news (for "Latest" tab) and themed news in parallel
+    const [latestResult, themedResults] = await Promise.all([
+      getLatestNews({ paging: { limit: 10 } }),
+      getNewsForThemes(MARKET_FLOW_THEMES, { paging: { limit: 10 } }),
+    ]);
+
+    // Process latest news
+    latestNewsItems = latestResult.data
+      .map(mapRecordToNewsItem)
+      .filter((item): item is NewsItem => item !== null)
+      .slice(0, 5);
+
+    // Process themed news
+    for (const [theme, result] of Object.entries(themedResults)) {
+      const items = result.data
+        .map(mapRecordToNewsItem)
+        .filter((item): item is NewsItem => item !== null);
+
+      if (items.length > 0) {
+        // Normalize theme name for display
+        const displayTheme = theme === 'market-structure' ? 'market structure' :
+                            theme === 'regulation' ? 'regulation and policy' :
+                            theme;
+        newsByTheme.set(displayTheme, items.slice(0, 5));
+      }
+    }
+
+    console.log(`[index.astro] Fetched ${latestNewsItems.length} latest news items and ${newsByTheme.size} themed categories`);
   } catch (error) {
     console.error("[index.astro] Failed to fetch news:", error);
   }
@@ -208,8 +243,8 @@ function getNewsThemeClass(theme: string): string {
   // Map theme values to tab data-f values
   if (t === 'tokenization') return 'tokenization';
   if (t === 'stablecoins') return 'stablecoins';
-  if (t === 'regulation and policy') return 'regulation-policy';
-  if (t === 'market structure') return 'market-structure';
+  if (t === 'regulation' || t === 'regulation and policy') return 'regulation-policy';
+  if (t === 'market-structure' || t === 'market structure') return 'market-structure';
   return t;
 }
 ---
@@ -1108,6 +1143,20 @@ function getNewsThemeClass(theme: string): string {
             <div class="marketflow-item__body"><div class="marketflow-item__source">Blockstories</div><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="marketflow-item__tag">Interview</span></div>
           </li>
         )}
+        {/* Render latest news items (for "Latest" tab) */}
+        {latestNewsItems.map((news) => (
+          <li class="marketflow-item" data-cat="latest">
+            <div>
+              <div class="marketflow-item__time">{formatNewsTime(news.createdAt)}</div>
+            </div>
+            <div class="marketflow-item__body">
+              <div class="marketflow-item__source">{formatSource(news.source)}</div>
+              <h3><a href={news.url} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{news.title}</a></h3>
+              <p>{news.description}</p>
+              {news.theme && <span class="marketflow-item__tag">{news.theme}</span>}
+            </div>
+          </li>
+        ))}
         {/* Render news items grouped by theme, max 5 per theme */}
         {Array.from(newsByTheme.entries()).map(([theme, items]) =>
           items.map((news) => {
