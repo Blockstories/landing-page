@@ -887,6 +887,18 @@ function getNewsThemeClass(theme: string): string {
 .news-popup__arrow{font-size:1.1rem;opacity:0.4;transition:all 0.2s ease;transform:translateX(-4px)}
 .news-popup__list a:hover .news-popup__arrow{opacity:1;transform:translateX(0);color:var(--accent)}
 
+/* ═══ Subscription Popup Form ═══ */
+.sub-popup__form{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.sub-popup__field{display:flex;flex-direction:column;gap:6px}
+.sub-popup__field label{font-family:var(--sans);font-size:0.75rem;font-weight:500;color:var(--text-2);text-transform:uppercase;letter-spacing:0.04em}
+.sub-popup__optional{color:var(--text-3);font-weight:400;text-transform:none}
+.sub-popup__field input{font-family:var(--sans);font-size:0.9rem;padding:12px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text-1);outline:none;transition:all 0.2s ease}
+.sub-popup__field input:focus{border-color:var(--accent);background:var(--surface-warm)}
+.sub-popup__field input::placeholder{color:var(--text-3);opacity:0.6}
+.sub-popup__submit{font-family:var(--sans);font-size:0.85rem;font-weight:600;padding:14px 24px;background:var(--accent);color:var(--surface-dark);border:none;border-radius:8px;cursor:pointer;transition:all 0.2s ease;margin-top:8px}
+.sub-popup__submit:hover{opacity:0.9;transform:translateY(-1px)}
+.sub-popup__submit:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:1024px){
   .hero-ed-grid{grid-template-columns:1fr;gap:2.5rem}
@@ -991,7 +1003,7 @@ function getNewsThemeClass(theme: string): string {
         <div class="hero-eyebrow">The European Digital Asset Briefing</div>
         <h1 class="hero-headline">How institutions stay ahead of digital assets. <em>Every Thursday.</em></h1>
         <p class="hero-body">Every week, we talk to the executives, regulators, and builders shaping digital assets. Exclusive interviews. Original analysis. Market intelligence you won't find anywhere else.</p>
-        <form class="hero-form" onsubmit="event.preventDefault()">
+        <form class="hero-form" data-form-id="home_hero" onsubmit="event.preventDefault()">
           <input type="email" placeholder="Your professional email" aria-label="Email address" required>
           <button type="submit">Subscribe</button>
         </form>
@@ -1284,8 +1296,37 @@ function getNewsThemeClass(theme: string): string {
     <div class="news-popup__content">
       <button class="news-popup__close" aria-label="Close">&times;</button>
       <h4 class="news-popup__title">Select News Source</h4>
-      <p class="news-popup__subtitle">This story is covered by multiple publishers</p>
+      <p class="news-popup__subtitle">This story is covered by multiple publishers.</p>
       <ul class="news-popup__list" id="newsPopupList"></ul>
+    </div>
+  </div>
+
+  <!-- ═══ Subscription Popup ═══ -->
+  <div id="subPopup" class="news-popup" style="display:none;">
+    <div class="news-popup__overlay"></div>
+    <div class="news-popup__content" style="min-width:420px;max-width:480px;">
+      <button class="news-popup__close" id="subPopupClose" aria-label="Close">&times;</button>
+      <h4 class="news-popup__title">Complete Your Subscription</h4>
+      <p class="news-popup__subtitle">Tell us a bit about you so we can tailor insights, events, and updates to your role.</p>
+      <form id="subPopupForm" class="sub-popup__form">
+        <div class="sub-popup__field">
+          <label for="subEmail">Email</label>
+          <input type="email" id="subEmail" name="email" required readonly style="background:var(--surface-warm);color:var(--text-2);">
+        </div>
+        <div class="sub-popup__field">
+          <label for="subRole">What's your role or job title? <span class="sub-popup__optional">(optional)</span></label>
+          <input type="text" id="subRole" name="role" placeholder="e.g., Portfolio Manager, Analyst, Executive">
+        </div>
+        <div class="sub-popup__field">
+          <label for="subCompany">Which company or institution do you work for?</label>
+          <input type="text" id="subCompany" name="company" placeholder="e.g., Deutsche Bank, UBS" required>
+        </div>
+        <div class="sub-popup__field">
+          <label for="subLocation">Where are you based? (for special event invitations) <span class="sub-popup__optional">(optional)</span></label>
+          <input type="text" id="subLocation" name="location" placeholder="e.g., Frankfurt, London, Zurich">
+        </div>
+        <button type="submit" class="sub-popup__submit">Subscribe to Blockstories</button>
+      </form>
     </div>
   </div>
 
@@ -1296,7 +1337,7 @@ function getNewsThemeClass(theme: string): string {
       <p>Join 15,000+ institutional decision-makers, bankers, asset managers and policymakers who rely on Blockstories for exclusive research, regulatory tracking and market intelligence across Europe's digital asset landscape.</p>
       <div class="tagline">Independent. Editorial. Institutional-grade.</div>
     </div>
-    <form class="cta-form" onsubmit="event.preventDefault()">
+    <form class="cta-form" data-form-id="home_marketflow" onsubmit="event.preventDefault()">
       <div class="row">
         <input type="email" placeholder="your@email.com">
         <button type="submit">Subscribe</button>
@@ -1505,7 +1546,7 @@ function getNewsThemeClass(theme: string): string {
   <div class="wrap">
     <div class="sub-inner">
       <div class="sub-txt"><h3>Institutional Briefing</h3><p>Executive-level insights on digital assets, every Thursday.</p></div>
-      <form class="sub-form" onsubmit="event.preventDefault()">
+      <form class="sub-form" data-form-id="home_footer" onsubmit="event.preventDefault()">
         <input type="email" placeholder="your@email.com">
         <button type="submit">Subscribe</button>
       </form>
@@ -1775,54 +1816,101 @@ if(document.querySelector('[data-briefing] h2')?.textContent?.includes('No brief
   });
 })();
 
-// ═══ Subscription Form Handling ═══
+// ═══ Subscription Popup & Form Handling ═══
 (function(){
-  const forms = document.querySelectorAll('.hero-form, .cta-form, .sub-form');
+  const subPopup = document.getElementById('subPopup') as HTMLElement;
+  const subPopupForm = document.getElementById('subPopupForm') as HTMLFormElement;
+  const subPopupClose = document.getElementById('subPopupClose') as HTMLButtonElement;
+  const subEmailInput = document.getElementById('subEmail') as HTMLInputElement;
+  let activeForm: HTMLFormElement | null = null;
+  let activeFormId: string = 'home_unknown';
 
+  function openSubPopup(email: string, formId: string) {
+    activeFormId = formId;
+    if (subEmailInput) subEmailInput.value = email;
+    if (subPopup) subPopup.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSubPopup() {
+    if (subPopup) subPopup.style.display = 'none';
+    document.body.style.overflow = '';
+    activeForm = null;
+    activeFormId = 'home_unknown';
+    if (subPopupForm) subPopupForm.reset();
+  }
+
+  subPopupClose?.addEventListener('click', closeSubPopup);
+  subPopup?.querySelector('.news-popup__overlay')?.addEventListener('click', closeSubPopup);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSubPopup(); });
+
+  // Main subscription forms - show popup instead of submitting directly
+  const forms = document.querySelectorAll('.hero-form, .cta-form, .sub-form');
   forms.forEach(form => {
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', (e) => {
       e.preventDefault();
       const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
-      const button = form.querySelector('button[type="submit"]') as HTMLButtonElement;
       const email = emailInput?.value?.trim();
-
       if (!email) return;
-
-      const originalText = button?.textContent || 'Subscribe';
-      if (button) {
-        button.disabled = true;
-        button.textContent = 'Subscribing...';
-      }
-
-      try {
-        const res = await fetch('/api/subscribe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-          if (emailInput) emailInput.value = '';
-          if (button) button.textContent = 'Subscribed!';
-          setTimeout(() => {
-            if (button) {
-              button.disabled = false;
-              button.textContent = originalText;
-            }
-          }, 2000);
-        } else {
-          throw new Error(data.error || 'Subscription failed');
-        }
-      } catch (err) {
-        console.error('[Subscribe] Error:', err);
-        if (button) {
-          button.textContent = 'Failed - Try Again';
-          button.disabled = false;
-        }
-      }
+      activeForm = form as HTMLFormElement;
+      const formId = (form as HTMLFormElement).dataset.formId || 'home_unknown';
+      openSubPopup(email, formId);
     });
+  });
+
+  // Popup form submission
+  subPopupForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(subPopupForm);
+    const email = formData.get('email') as string;
+    const role = formData.get('role') as string;
+    const company = formData.get('company') as string;
+    const location = formData.get('location') as string;
+
+    const submitBtn = subPopupForm.querySelector('.sub-popup__submit') as HTMLButtonElement;
+    const originalText = submitBtn?.textContent || 'Subscribe to Blockstories';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Subscribing...';
+    }
+
+    try {
+      const customFields = [
+        ...(role ? [{ name: 'Role', value: role }] : []),
+        ...(company ? [{ name: 'Company', value: company }] : []),
+        ...(location ? [{ name: 'Location', value: location }] : [])
+      ];
+
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, customFields, utmCampaign: activeFormId })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        if (submitBtn) submitBtn.textContent = 'Subscribed!';
+        // Clear original form
+        const emailInput = activeForm?.querySelector('input[type="email"]') as HTMLInputElement;
+        if (emailInput) emailInput.value = '';
+        setTimeout(() => {
+          closeSubPopup();
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+          }
+        }, 1500);
+      } else {
+        throw new Error(data.error || 'Subscription failed');
+      }
+    } catch (err) {
+      console.error('[Subscribe] Error:', err);
+      if (submitBtn) {
+        submitBtn.textContent = 'Failed - Try Again';
+        submitBtn.disabled = false;
+      }
+    }
   });
 })();
 </script>

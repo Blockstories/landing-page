@@ -1,10 +1,10 @@
 import type { APIRoute } from "astro";
-import { createSubscription } from "../../../../backend/integrations/beehiiv.js";
+import { createSubscription, type CustomFieldValue } from "../../../../backend/integrations/beehiiv.js";
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { email, publicationId } = body;
+    const { email, publicationId, customFields, utmCampaign } = body;
 
     if (!email || typeof email !== "string") {
       return new Response(
@@ -23,11 +23,25 @@ export const POST: APIRoute = async ({ request }) => {
       );
     }
 
+    // Build custom fields array - map display names to the actual field names
+    const customFieldsArray: CustomFieldValue[] = [];
+    if (Array.isArray(customFields)) {
+      for (const field of customFields) {
+        if (field.name && field.value) {
+          customFieldsArray.push({
+            name: field.name,
+            value: field.value
+          });
+        }
+      }
+    }
+
     const subscription = await createSubscription(pubId, {
       email,
-      utm_source: "blockstories_website",
+      utm_source: "blockstories.io",
       utm_medium: "organic",
-      utm_campaign: "landing_page"
+      utm_campaign: utmCampaign || "landing_page",
+      custom_fields: customFieldsArray.length > 0 ? customFieldsArray : undefined
     });
 
     return new Response(
