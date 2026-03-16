@@ -74,7 +74,7 @@ async function handleAPI(req: IncomingMessage, res: ServerResponse) {
   if (pathname === "/api/softr/records" && req.method === "GET") {
     const databaseId = url.searchParams.get("databaseId") || process.env.SOFTR_DATABASE_ID || "";
     const tableId = url.searchParams.get("tableId") || process.env.SOFTR_TABLE_ID || "";
-    const viewId = url.searchParams.get("viewId") || process.env.SOFTR_VIEW_ID || undefined;
+    const viewId = url.searchParams.get("viewId") || process.env.SOFTR_VIEW_CREATEDAT_ID || undefined;
     const fieldNames = url.searchParams.get("fieldNames") === "true";
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const offset = parseInt(url.searchParams.get("offset") || "0");
@@ -104,7 +104,7 @@ async function handleAPI(req: IncomingMessage, res: ServerResponse) {
   if (pathname === "/api/softr/records/mapped" && req.method === "GET") {
     const databaseId = url.searchParams.get("databaseId") || process.env.SOFTR_DATABASE_ID || "";
     const tableId = url.searchParams.get("tableId") || process.env.SOFTR_TABLE_ID || "";
-    const viewId = url.searchParams.get("viewId") || process.env.SOFTR_VIEW_ID || undefined;
+    const viewId = url.searchParams.get("viewId") || process.env.SOFTR_VIEW_CREATEDAT_ID || undefined;
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const offset = parseInt(url.searchParams.get("offset") || "0");
 
@@ -133,7 +133,7 @@ async function handleAPI(req: IncomingMessage, res: ServerResponse) {
   if (pathname === "/api/softr/records/raw" && req.method === "GET") {
     const databaseId = url.searchParams.get("databaseId") || process.env.SOFTR_DATABASE_ID || "";
     const tableId = url.searchParams.get("tableId") || process.env.SOFTR_TABLE_ID || "";
-    const viewId = url.searchParams.get("viewId") || process.env.SOFTR_VIEW_ID || undefined;
+    const viewId = url.searchParams.get("viewId") || process.env.SOFTR_VIEW_CREATEDAT_ID || undefined;
     const fieldNames = url.searchParams.get("fieldNames") === "true";
     const limit = parseInt(url.searchParams.get("limit") || "10");
     const offset = parseInt(url.searchParams.get("offset") || "0");
