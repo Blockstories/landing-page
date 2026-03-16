@@ -1,24 +1,21 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getArticlesByPublication } from '../../../backend/db/queries.js';
+import type { Article } from '../../../backend/db/types.js';
 
 const pageStart = performance.now();
 console.log(`[news.astro] Starting render`);
 
-const institutionalPubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
-const cryptoPubId = import.meta.env.BEEHIIV_CRYPTO_PUB_ID || "";
-const activeTab = Astro.url.searchParams.get("tab") || "institutional";
+const pubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
 
-const activePubId = activeTab === "crypto" ? cryptoPubId : institutionalPubId;
-
-let articles = [];
+let articles: Article[] = [];
 let hasMore = false;
 
-if (activePubId) {
+if (pubId) {
   try {
-    console.log(`[news.astro] Fetching articles for ${activeTab}...`);
+    console.log(`[news.astro] Fetching articles...`);
     const fetchStart = performance.now();
-    const result = await getArticlesByPublication(activePubId, 10);
+    const result = await getArticlesByPublication(pubId, 10);
     console.log(`[news.astro] Data fetched in ${(performance.now() - fetchStart).toFixed(2)}ms`);
     articles = result.articles;
     hasMore = result.hasMore;
@@ -113,7 +110,6 @@ function getTagClass(tag: string): string {
 .feed{border-right:1px solid var(--border);padding-right:36px;min-width:0}
 .feed-group{margin-bottom:0}
 .feed-group-label{font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);padding:20px 0 12px;margin-bottom:0;display:flex;align-items:center;gap:10px}
-.feed-group-label::before{content:'';width:12px;height:1px;background:var(--accent)}
 
 /* ═══ NEWS ITEM ═══ */
 .ni{display:grid;grid-template-columns:1fr;gap:0;padding:18px 0;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background var(--ease)}
@@ -277,6 +273,27 @@ function getTagClass(tag: string): string {
 .cta-badge{font-family:var(--mono);font-size:.45rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:5px}
 .cta-badge::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0}
 
+/* ═══ SUBSCRIPTION POPUP ═══ */
+.news-popup{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center}
+.news-popup__overlay{position:absolute;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);animation:fadeIn 0.2s ease}
+.news-popup__content{position:relative;background:linear-gradient(145deg,var(--surface) 0%,var(--surface-warm) 100%);border:1px solid var(--border);border-radius:16px;padding:32px 36px;min-width:380px;max-width:90vw;box-shadow:0 25px 80px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.15);animation:slideUp 0.3s cubic-bezier(0.16,1,0.3,1)}
+.news-popup__close{position:absolute;top:16px;right:20px;background:none;border:none;font-size:1.75rem;color:var(--text-3);cursor:pointer;padding:0;line-height:1;transition:all 0.2s ease;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.news-popup__close:hover{color:var(--text-1);background:var(--surface-warm);transform:rotate(90deg)}
+.news-popup__title{font-family:var(--serif);font-size:1.35rem;font-weight:400;margin-bottom:8px;color:var(--text-1);letter-spacing:-0.02em}
+.news-popup__subtitle{font-size:0.85rem;color:var(--text-3);margin-bottom:24px}
+.sub-popup__form{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.sub-popup__field{display:flex;flex-direction:column;gap:6px}
+.sub-popup__field label{font-family:var(--sans);font-size:0.75rem;font-weight:500;color:var(--text-2);text-transform:uppercase;letter-spacing:0.04em}
+.sub-popup__optional{color:var(--text-3);font-weight:400;text-transform:none}
+.sub-popup__field input{font-family:var(--sans);font-size:0.9rem;padding:12px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text-1);outline:none;transition:all 0.2s ease}
+.sub-popup__field input:focus{border-color:var(--accent);background:var(--surface-warm)}
+.sub-popup__field input::placeholder{color:var(--text-3);opacity:0.6}
+.sub-popup__submit{font-family:var(--sans);font-size:0.85rem;font-weight:600;padding:14px 24px;background:var(--accent);color:var(--surface-dark);border:none;border-radius:8px;cursor:pointer;transition:all 0.2s ease;margin-top:8px}
+.sub-popup__submit:hover{opacity:0.9;transform:translateY(-1px)}
+.sub-popup__submit:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:1024px){
   .news-grid{grid-template-columns:1fr}
@@ -354,17 +371,6 @@ function getTagClass(tag: string): string {
   <div class="dateline">
     <span class="dateline-date" id="dateline">Tuesday, March 4, 2026</span>
     <div class="dateline-live"><span class="dateline-live-dot"></span> Live Updates</div>
-  </div>
-
-  <div class="filter-bar">
-    <div class="search-wrap">
-      <span class="search-icon">&#8981;</span>
-      <input type="text" placeholder="Search news..." aria-label="Search news">
-    </div>
-    <div class="tabs" id="newsTabs">
-      <a href="?tab=institutional" class={"tab " + (activeTab === "institutional" ? "on" : "")} data-f="institutional">Institutional</a>
-      <a href="?tab=crypto" class={"tab " + (activeTab === "crypto" ? "on" : "")} data-f="crypto">Crypto</a>
-    </div>
   </div>
 
   <!-- ═══ FEATURED NEWS ═══ -->
@@ -446,6 +452,13 @@ function getTagClass(tag: string): string {
   </div>
 
   <div class="newsfeed-heading">Live Newsfeed <span class="live-dot"></span></div>
+
+  <div class="filter-bar">
+    <div class="search-wrap">
+      <span class="search-icon">&#8981;</span>
+      <input type="text" placeholder="Search news..." aria-label="Search news">
+    </div>
+  </div>
 
   <!-- ═══ MAIN GRID ═══ -->
   <div class="news-grid">
@@ -631,8 +644,8 @@ function getTagClass(tag: string): string {
         <div class="sub-widget">
           <h4>Institutional Briefing</h4>
           <p>Executive-level digital asset intelligence, every Thursday.</p>
-          <form onsubmit="event.preventDefault()">
-            <input type="email" placeholder="your@email.com" aria-label="Email address">
+          <form data-form-id="news_newsfeed" data-use-popup>
+            <input type="email" placeholder="your@email.com" aria-label="Email address" required>
             <button type="submit">Subscribe</button>
           </form>
         </div>
@@ -642,6 +655,7 @@ function getTagClass(tag: string): string {
   </div><!-- end news-grid -->
 
   <!-- ═══ MAJOR EVENTS TIMELINE ═══ -->
+  <!-- HIDDEN
   <div class="timeline reveal">
     <div class="timeline-header">
       <div class="timeline-label">Major Institutional Developments – Last 30 Days</div>
@@ -716,6 +730,7 @@ function getTagClass(tag: string): string {
       </div>
     </div>
   </div>
+  -->
 
   <!-- ═══ CTA BREAK ═══ -->
   <div class="cta-break reveal">
@@ -724,9 +739,9 @@ function getTagClass(tag: string): string {
       <p>Join 15,000+ institutional decision-makers who rely on Blockstories for exclusive research, regulatory tracking and market intelligence.</p>
       <div class="tagline">Independent. Editorial. Institutional-grade.</div>
     </div>
-    <form class="cta-form" onsubmit="event.preventDefault()">
+    <form class="cta-form" data-form-id="news_footer" data-use-popup>
       <div class="row">
-        <input type="email" placeholder="your@email.com">
+        <input type="email" placeholder="your@email.com" required>
         <button type="submit">Subscribe</button>
       </div>
       <div class="cta-badges">
@@ -738,6 +753,35 @@ function getTagClass(tag: string): string {
   </div>
 
 </div><!-- end wrap -->
+
+  <!-- ═══ Subscription Popup ═══ -->
+  <div id="subPopup" class="news-popup" style="display:none;">
+    <div class="news-popup__overlay"></div>
+    <div class="news-popup__content" style="min-width:420px;max-width:480px;">
+      <button class="news-popup__close" id="subPopupClose" aria-label="Close">&times;</button>
+      <h4 class="news-popup__title">Complete Your Subscription</h4>
+      <p class="news-popup__subtitle">Tell us a bit about you so we can tailor insights, events, and updates to your role.</p>
+      <form id="subPopupForm" class="sub-popup__form">
+        <div class="sub-popup__field">
+          <label for="subEmail">Email</label>
+          <input type="email" id="subEmail" name="email" required readonly style="background:var(--surface-warm);color:var(--text-2);">
+        </div>
+        <div class="sub-popup__field">
+          <label for="subRole">What's your role or job title? <span class="sub-popup__optional">(optional)</span></label>
+          <input type="text" id="subRole" name="role" placeholder="e.g., Portfolio Manager, Analyst, Executive">
+        </div>
+        <div class="sub-popup__field">
+          <label for="subCompany">Which company or institution do you work for?</label>
+          <input type="text" id="subCompany" name="company" placeholder="e.g., Deutsche Bank, UBS" required>
+        </div>
+        <div class="sub-popup__field">
+          <label for="subLocation">Where are you based? (for special event invitations) <span class="sub-popup__optional">(optional)</span></label>
+          <input type="text" id="subLocation" name="location" placeholder="e.g., Frankfurt, London, Zurich">
+        </div>
+        <button type="submit" class="sub-popup__submit">Subscribe to Blockstories</button>
+      </form>
+    </div>
+  </div>
 
 <!-- ═══ FOOTER ═══ -->
 <footer class="foot">
@@ -755,7 +799,8 @@ function getTagClass(tag: string): string {
 </footer>
 
 <script>
-// ═══ Major Events Timeline Scroll ═══
+// ═══ Major Events Timeline Scroll ═══ (HIDDEN)
+/*
 (function(){
   var vp=document.getElementById('tlViewport');
   var track=document.getElementById('tlTrack');
@@ -801,6 +846,7 @@ function getTagClass(tag: string): string {
   setup();
   window.addEventListener('resize',setup);
 })();
+*/
 
 // ═══ City Clocks ═══
 function clocks(){
@@ -821,18 +867,16 @@ clocks();setInterval(clocks,30000);
   }
 })();
 
-// ═══ News Tabs ═══
-// Tab switching is now handled by server-side navigation via query params
-// This script handles any client-side enhancements if needed
-const newsTabs=document.getElementById('newsTabs');
-if(newsTabs){
-  // Optional: Add smooth transitions or client-side filtering if desired
-  // Currently tabs use full page navigation for server-side rendering
-}
-
 // ═══ Scroll Reveal ═══
 const observer=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+</script>
+
+<script>
+  import { initSubscriptionPopup } from '../scripts/subscription';
+  initSubscriptionPopup({
+    triggerSelector: '[data-use-popup]'
+  });
 </script>
 
 </Layout>

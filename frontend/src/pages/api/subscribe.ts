@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { createSubscription, type CustomFieldValue } from "../../../../backend/integrations/beehiiv.js";
+import { createSubscription, type CustomFieldValue } from "../../../../backend/integrations/beehiiv";
 
 export const POST: APIRoute = async ({ request }) => {
   try {

@@ -1003,7 +1003,7 @@ function getNewsThemeClass(theme: string): string {
         <div class="hero-eyebrow">The European Digital Asset Briefing</div>
         <h1 class="hero-headline">How institutions stay ahead of digital assets. <em>Every Thursday.</em></h1>
         <p class="hero-body">Every week, we talk to the executives, regulators, and builders shaping digital assets. Exclusive interviews. Original analysis. Market intelligence you won't find anywhere else.</p>
-        <form class="hero-form" data-form-id="home_hero" onsubmit="event.preventDefault()">
+        <form class="hero-form" data-form-id="home_hero" data-use-popup>
           <input type="email" placeholder="Your professional email" aria-label="Email address" required>
           <button type="submit">Subscribe</button>
         </form>
@@ -1337,7 +1337,7 @@ function getNewsThemeClass(theme: string): string {
       <p>Join 15,000+ institutional decision-makers, bankers, asset managers and policymakers who rely on Blockstories for exclusive research, regulatory tracking and market intelligence across Europe's digital asset landscape.</p>
       <div class="tagline">Independent. Editorial. Institutional-grade.</div>
     </div>
-    <form class="cta-form" data-form-id="home_marketflow" onsubmit="event.preventDefault()">
+    <form class="cta-form" data-form-id="home_marketflow" data-use-popup>
       <div class="row">
         <input type="email" placeholder="your@email.com">
         <button type="submit">Subscribe</button>
@@ -1546,7 +1546,7 @@ function getNewsThemeClass(theme: string): string {
   <div class="wrap">
     <div class="sub-inner">
       <div class="sub-txt"><h3>Institutional Briefing</h3><p>Executive-level insights on digital assets, every Thursday.</p></div>
-      <form class="sub-form" data-form-id="home_footer" onsubmit="event.preventDefault()">
+      <form class="sub-form" data-form-id="home_footer" data-use-popup>
         <input type="email" placeholder="your@email.com">
         <button type="submit">Subscribe</button>
       </form>
@@ -1817,102 +1817,11 @@ if(document.querySelector('[data-briefing] h2')?.textContent?.includes('No brief
 })();
 
 // ═══ Subscription Popup & Form Handling ═══
-(function(){
-  const subPopup = document.getElementById('subPopup') as HTMLElement;
-  const subPopupForm = document.getElementById('subPopupForm') as HTMLFormElement;
-  const subPopupClose = document.getElementById('subPopupClose') as HTMLButtonElement;
-  const subEmailInput = document.getElementById('subEmail') as HTMLInputElement;
-  let activeForm: HTMLFormElement | null = null;
-  let activeFormId: string = 'home_unknown';
-
-  function openSubPopup(email: string, formId: string) {
-    activeFormId = formId;
-    if (subEmailInput) subEmailInput.value = email;
-    if (subPopup) subPopup.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeSubPopup() {
-    if (subPopup) subPopup.style.display = 'none';
-    document.body.style.overflow = '';
-    activeForm = null;
-    activeFormId = 'home_unknown';
-    if (subPopupForm) subPopupForm.reset();
-  }
-
-  subPopupClose?.addEventListener('click', closeSubPopup);
-  subPopup?.querySelector('.news-popup__overlay')?.addEventListener('click', closeSubPopup);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSubPopup(); });
-
-  // Main subscription forms - show popup instead of submitting directly
-  const forms = document.querySelectorAll('.hero-form, .cta-form, .sub-form');
-  forms.forEach(form => {
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
-      const email = emailInput?.value?.trim();
-      if (!email) return;
-      activeForm = form as HTMLFormElement;
-      const formId = (form as HTMLFormElement).dataset.formId || 'home_unknown';
-      openSubPopup(email, formId);
-    });
-  });
-
-  // Popup form submission
-  subPopupForm?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(subPopupForm);
-    const email = formData.get('email') as string;
-    const role = formData.get('role') as string;
-    const company = formData.get('company') as string;
-    const location = formData.get('location') as string;
-
-    const submitBtn = subPopupForm.querySelector('.sub-popup__submit') as HTMLButtonElement;
-    const originalText = submitBtn?.textContent || 'Subscribe to Blockstories';
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Subscribing...';
-    }
-
-    try {
-      const customFields = [
-        ...(role ? [{ name: 'Role', value: role }] : []),
-        ...(company ? [{ name: 'Company', value: company }] : []),
-        ...(location ? [{ name: 'Location', value: location }] : [])
-      ];
-
-      const res = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, customFields, utmCampaign: activeFormId })
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        if (submitBtn) submitBtn.textContent = 'Subscribed!';
-        // Clear original form
-        const emailInput = activeForm?.querySelector('input[type="email"]') as HTMLInputElement;
-        if (emailInput) emailInput.value = '';
-        setTimeout(() => {
-          closeSubPopup();
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = originalText;
-          }
-        }, 1500);
-      } else {
-        throw new Error(data.error || 'Subscription failed');
-      }
-    } catch (err) {
-      console.error('[Subscribe] Error:', err);
-      if (submitBtn) {
-        submitBtn.textContent = 'Failed - Try Again';
-        submitBtn.disabled = false;
-      }
-    }
-  });
-})();
+// Uses shared subscription.ts handler
+import { initSubscriptionPopup } from '../scripts/subscription';
+initSubscriptionPopup({
+  triggerSelector: '[data-use-popup]'
+});
 </script>
 
 </Layout>

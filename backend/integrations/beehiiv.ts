@@ -65,9 +65,61 @@ export interface GetPostsOptions {
   expand?: string[];
 }
 
+export async function getPostByPublicationIdAndPostId(
+  pubId: string,
+  postId: string,
+  expand?: string[]
+): Promise<BeehiivPost> {
+  const params = new URLSearchParams();
+  if (expand) {
+    for (const field of expand) {
+      params.append("expand", field);
+    }
+  }
+
+  const queryString = params.toString();
+  const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/posts/${postId}${queryString ? "?" + queryString : ""}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getAuthHeaders()
+  });
+
+  const result = await handleResponse<{ data: BeehiivPost }>(response);
+  return result.data;
+}
+
+export async function getPostsByPublicationId(
+  pubId: string,
+  options: GetPostsOptions = {}
+): Promise<BeehiivPostsResponse> {
+  const params = new URLSearchParams();
+
+  if (options.limit) params.append("limit", options.limit.toString());
+  if (options.page) params.append("page", options.page.toString());
+  if (options.status) params.append("status", options.status);
+  if (options.expand) {
+    for (const field of options.expand) {
+      params.append("expand", field);
+    }
+  }
+
+  const queryString = params.toString();
+  const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/posts${queryString ? "?" + queryString : ""}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getAuthHeaders()
+  });
+
+  return handleResponse<BeehiivPostsResponse>(response);
+}
+
+// ═══ SUBSCRIPTION TYPES ═══
+
 export interface CustomFieldValue {
-  name?: string;
-  value?: string;
+  name: string;
+  value: string;
 }
 
 export type SubscriptionTier = "free" | "premium";
@@ -119,55 +171,7 @@ export interface SubscriptionResponse {
   data: Subscription;
 }
 
-export async function getPostByPublicationIdAndPostId(
-  pubId: string,
-  postId: string,
-  expand?: string[]
-): Promise<BeehiivPost> {
-  const params = new URLSearchParams();
-  if (expand) {
-    for (const field of expand) {
-      params.append("expand", field);
-    }
-  }
-
-  const queryString = params.toString();
-  const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/posts/${postId}${queryString ? "?" + queryString : ""}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getAuthHeaders()
-  });
-
-  const result = await handleResponse<{ data: BeehiivPost }>(response);
-  return result.data;
-}
-
-export async function getPostsByPublicationId(
-  pubId: string,
-  options: GetPostsOptions = {}
-): Promise<BeehiivPostsResponse> {
-  const params = new URLSearchParams();
-
-  if (options.limit) params.append("limit", options.limit.toString());
-  if (options.page) params.append("page", options.page.toString());
-  if (options.status) params.append("status", options.status);
-  if (options.expand) {
-    for (const field of options.expand) {
-      params.append("expand", field);
-    }
-  }
-
-  const queryString = params.toString();
-  const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/posts${queryString ? "?" + queryString : ""}`;
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getAuthHeaders()
-  });
-
-  return handleResponse<BeehiivPostsResponse>(response);
-}
+// ═══ SUBSCRIPTION FUNCTIONS ═══
 
 export async function createSubscription(
   pubId: string,
