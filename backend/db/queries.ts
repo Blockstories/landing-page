@@ -114,6 +114,7 @@ export async function getNewestArticles(count: number = 10, offset: number = 0):
   }
 
   // Single query to get articles with all their people and tags via JOIN
+  // Excludes articles tagged as "duplicate"
   const result = await db.execute(
     `SELECT
        a.*,
@@ -124,6 +125,10 @@ export async function getNewestArticles(count: number = 10, offset: number = 0):
      LEFT JOIN article_people ap ON a.id = ap.article_id
      LEFT JOIN people p ON ap.person_id = p.id
      LEFT JOIN article_tags at ON a.id = at.article_id
+     WHERE NOT EXISTS (
+       SELECT 1 FROM article_tags at2
+       WHERE at2.article_id = a.id AND at2.tag = 'duplicate'
+     )
      ORDER BY a.publish_date DESC, a.id DESC
      LIMIT ? OFFSET ?`,
     [count, offset]
@@ -201,12 +206,17 @@ export async function getArticlesByTags(
   if (tags && tags.length > 0) {
     // Use indexed article_tags table for efficient tag filtering
     // First get distinct article IDs to avoid LIMIT issues with JOINs
+    // Excludes articles tagged as "duplicate"
     const tagPlaceholders = tags.map(() => "?").join(", ");
     const idQuery = `SELECT DISTINCT a.id
     FROM articles a
     INNER JOIN article_tags at ON a.id = at.article_id
     WHERE a.status = 'confirmed'
       AND at.tag IN (${tagPlaceholders})
+      AND NOT EXISTS (
+        SELECT 1 FROM article_tags at2
+        WHERE at2.article_id = a.id AND at2.tag = 'duplicate'
+      )
     ORDER BY a.publish_date DESC, a.id DESC
     LIMIT ?`;
 
@@ -233,8 +243,13 @@ export async function getArticlesByTags(
   } else {
     // No tags filter - fetch all confirmed articles
     // First get distinct article IDs to avoid LIMIT issues with JOINs
+    // Excludes articles tagged as "duplicate"
     const idQuery = `SELECT id FROM articles
     WHERE status = 'confirmed'
+      AND NOT EXISTS (
+        SELECT 1 FROM article_tags at2
+        WHERE at2.article_id = articles.id AND at2.tag = 'duplicate'
+      )
     ORDER BY publish_date DESC, id DESC
     LIMIT ?`;
 
@@ -509,6 +524,7 @@ export async function removePersonFromArticle(
 /**
  * Get articles by person (as author or featured)
  * Fetches tags via JOIN with article_tags table
+ * Excludes articles tagged as "duplicate"
  */
 export async function getArticlesByPerson(
   personId: number,
@@ -520,7 +536,11 @@ export async function getArticlesByPerson(
     FROM articles a
     JOIN article_people ap ON a.id = ap.article_id
     LEFT JOIN article_tags at ON a.id = at.article_id
-    WHERE ap.person_id = ?`;
+    WHERE ap.person_id = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM article_tags at2
+        WHERE at2.article_id = a.id AND at2.tag = 'duplicate'
+      )`;
   const params: (number | string)[] = [personId];
 
   if (role) {
@@ -663,6 +683,7 @@ export async function getArticlesByPublication(
   }
 
   // Build query with optional cursor filter and JOIN for people and tags
+  // Excludes articles tagged as "duplicate"
   let query = `SELECT
     a.*,
     p.id as person_id, p.name, p.slug, p.image_url, p.company,
@@ -672,7 +693,11 @@ export async function getArticlesByPublication(
   LEFT JOIN article_people ap ON a.id = ap.article_id
   LEFT JOIN people p ON ap.person_id = p.id
   LEFT JOIN article_tags at ON a.id = at.article_id
-  WHERE a.beehiiv_publication_id = ?`;
+  WHERE a.beehiiv_publication_id = ?
+    AND NOT EXISTS (
+      SELECT 1 FROM article_tags at2
+      WHERE at2.article_id = a.id AND at2.tag = 'duplicate'
+    )`;
   const params: (string | number)[] = [publicationId];
 
   if (cursor) {
