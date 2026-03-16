@@ -125,3 +125,17 @@ export async function getRecordsRaw(
 ): Promise<RecordsResponse> {
   return getRecords(databaseId, tableId, options);
 }
+
+// News Aggregator constants - hardcoded for separation of concerns
+const NEWS_DATABASE_ID = process.env.SOFTR_DATABASE_ID || "";
+const NEWS_TABLE_ID = process.env.SOFTR_TABLE_ID || "";
+
+/**
+ * Get news records with mapped field names
+ * Specialized function for the news aggregator with hardcoded table/database IDs
+ */
+export async function getNewsWithMappedFields(
+  options: GetRecordsOptions = {}
+): Promise<MappedRecordsResponse> {
+  return getRecordsWithMappedFields(NEWS_DATABASE_ID, NEWS_TABLE_ID, options);
+}

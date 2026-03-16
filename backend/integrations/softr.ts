@@ -1,4 +1,4 @@
-const SOFTR_BASE_URL = process.env.SOFTR_BASE_URL || "https://api.softr.io/v1";
+const SOFTR_BASE_URL = (process.env.SOFTR_BASE_URL || "https://api.softr.io/v1").replace(/\/$/, "");
 
 function getAuthHeaders(): HeadersInit {
   return {
