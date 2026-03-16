@@ -1774,6 +1774,57 @@ if(document.querySelector('[data-briefing] h2')?.textContent?.includes('No brief
     }
   });
 })();
+
+// ═══ Subscription Form Handling ═══
+(function(){
+  const forms = document.querySelectorAll('.hero-form, .cta-form, .sub-form');
+
+  forms.forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const emailInput = form.querySelector('input[type="email"]') as HTMLInputElement;
+      const button = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      const email = emailInput?.value?.trim();
+
+      if (!email) return;
+
+      const originalText = button?.textContent || 'Subscribe';
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Subscribing...';
+      }
+
+      try {
+        const res = await fetch('/api/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          if (emailInput) emailInput.value = '';
+          if (button) button.textContent = 'Subscribed!';
+          setTimeout(() => {
+            if (button) {
+              button.disabled = false;
+              button.textContent = originalText;
+            }
+          }, 2000);
+        } else {
+          throw new Error(data.error || 'Subscription failed');
+        }
+      } catch (err) {
+        console.error('[Subscribe] Error:', err);
+        if (button) {
+          button.textContent = 'Failed - Try Again';
+          button.disabled = false;
+        }
+      }
+    });
+  });
+})();
 </script>
 
 </Layout>

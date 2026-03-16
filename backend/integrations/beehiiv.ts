@@ -65,6 +65,60 @@ export interface GetPostsOptions {
   expand?: string[];
 }
 
+export interface CustomFieldValue {
+  name?: string;
+  value?: string;
+}
+
+export type SubscriptionTier = "free" | "premium";
+
+export type SubscriptionStatus =
+  | "validating"
+  | "invalid"
+  | "pending"
+  | "active"
+  | "inactive"
+  | "needs_attention";
+
+export interface CreateSubscriptionRequest {
+  email: string;
+  reactivate_existing?: boolean;
+  send_welcome_email?: boolean;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  referring_site?: string;
+  referral_code?: string;
+  custom_fields?: CustomFieldValue[];
+  double_opt_override?: "on" | "off" | "not_set";
+  tier?: SubscriptionTier;
+  premium_tiers?: string[];
+  premium_tier_ids?: string[];
+}
+
+export interface Subscription {
+  id: string;
+  email: string;
+  status: SubscriptionStatus;
+  created: number;
+  subscription_tier: SubscriptionTier;
+  subscription_premium_tier_names: string[];
+  utm_source: string;
+  utm_medium: string;
+  utm_channel: string;
+  utm_campaign: string;
+  utm_term: string;
+  utm_content: string;
+  referring_site: string;
+  referral_code: string;
+}
+
+export interface SubscriptionResponse {
+  data: Subscription;
+}
+
 export async function getPostByPublicationIdAndPostId(
   pubId: string,
   postId: string,
@@ -113,4 +167,20 @@ export async function getPostsByPublicationId(
   });
 
   return handleResponse<BeehiivPostsResponse>(response);
+}
+
+export async function createSubscription(
+  pubId: string,
+  request: CreateSubscriptionRequest
+): Promise<Subscription> {
+  const url = `${BEEHIIV_BASE_URL}/publications/${pubId}/subscriptions`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(request)
+  });
+
+  const result = await handleResponse<SubscriptionResponse>(response);
+  return result.data;
 }
