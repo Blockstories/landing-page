@@ -31,8 +31,8 @@ export interface NewsItem {
   id: string;
   title: string;
   description: string;
-  source: string;
+  sources: string[];
   createdAt: string;
-  url: string;
+  urls: string[];
   theme: string;
 }

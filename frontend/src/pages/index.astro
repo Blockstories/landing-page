@@ -115,18 +115,48 @@ const MARKET_FLOW_THEMES = ['tokenization', 'stablecoins', 'regulation', 'market
 let latestNewsItems: NewsItem[] = [];
 let newsByTheme = new Map<string, NewsItem[]>();
 
+function extractUrls(record: MappedRecord): string[] {
+  const urlField = record.fields['links'];
+
+  if (Array.isArray(urlField)) {
+    return urlField.filter((u): u is string => typeof u === 'string' && u.length > 0);
+  }
+  if (typeof urlField === 'string' && urlField) {
+    return [urlField];
+  }
+  return [];
+}
+
+function extractSources(record: MappedRecord): string[] {
+  // Try mapped field names first, then fall back to Softr field IDs
+  const sourceField = record.fields['publisher']
+
+  if (Array.isArray(sourceField)) {
+    return sourceField.filter((s): s is string => typeof s === 'string' && s.length > 0);
+  }
+  if (typeof sourceField === 'string' && sourceField) {
+    return [sourceField];
+  }
+  return [];
+}
+
 function mapRecordToNewsItem(record: MappedRecord): NewsItem | null {
-  const title = String(record.fields['Title'] || record.fields['title'] || '');
+  const title = String(record.fields['title']);
   if (!title) return null;
+
+  const urls = extractUrls(record);
+  const sources = extractSources(record);
+
+  console.log('[mapRecordToNewsItem] createdAt raw:', record.fields['Created At'], record.fields['created_at'], record.fields['firstPublished']);
 
   return {
     id: record.id,
     title,
-    description: String(record.fields['Description'] || record.fields['description'] || record.fields['Summary'] || record.fields['summary'] || ''),
-    source: String(record.fields['Source'] || record.fields['source'] || record.fields['Publisher'] || record.fields['publisher'] || ''),
-    createdAt: String(record.fields['Created at'] || record.fields['Created At'] || record.fields['created_at'] || record.fields['firstPublished'] || record.created_at || ''),
-    url: String(record.fields['URL'] || record.fields['url'] || record.fields['Link'] || record.fields['link'] || '#'),
-    theme: String(record.fields['Theme'] || record.fields['theme'] || ''),
+    description: String(record.fields['bpoints']),
+    sources,
+    createdAt: String(record.fields['Created At'] || record.fields['created_at'] || record.fields['firstPublished'] || record.created_at || ''),
+    urls,
+    theme: String(record.fields['theme']),
   };
 }
 
@@ -163,11 +193,6 @@ if (!isBuildTime) {
   } catch (error) {
     console.error("[index.astro] Failed to fetch news:", error);
   }
-}
-
-// Helper function to format time from timestamp
-function formatTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // Helper function to calculate read time from content
@@ -220,9 +245,16 @@ function getPrimaryTag(tags: string[]): string | null {
 // Helper function to format time from date string (for news items)
 // Shows relative time if < 12 hours ago, otherwise shows date + time
 function formatNewsTime(dateStr: string): string {
-  if (!dateStr) return '';
+  console.log('[formatNewsTime] Input:', dateStr);
+  if (!dateStr) {
+    console.log('[formatNewsTime] Empty dateStr');
+    return '';
+  }
   const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return '';
+  if (isNaN(date.getTime())) {
+    console.log('[formatNewsTime] Invalid date');
+    return '';
+  }
 
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -249,9 +281,12 @@ function formatNewsTime(dateStr: string): string {
   return `${formattedDate}, ${timeStr}`;
 }
 
-// Helper function to format source with spaces after commas
-function formatSource(source: string): string {
-  return source.replace(/,/g, ', ');
+// Helper function to format sources for display
+function formatSources(sources: string[]): string {
+  if (sources.length === 0) return 'Unknown';
+  if (sources.length === 1) return sources[0];
+  // For multiple sources, show first one + count
+  return `${sources[0]} +${sources.length - 1}`;
 }
 
 // Helper function to map news theme to tab categories
@@ -831,6 +866,27 @@ function getNewsThemeClass(theme: string): string {
 .sub-form button{font-family:var(--sans);font-size:.78rem;font-weight:500;padding:11px 22px;background:var(--text-1);color:var(--bg);border:none;border-radius:3px;cursor:pointer;transition:opacity var(--ease)}
 .sub-form button:hover{opacity:.85}
 
+/* ═══ NEWS PUBLISHER POPUP ═══ */
+.news-popup{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center}
+.news-popup__overlay{position:absolute;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);animation:fadeIn 0.2s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.news-popup__content{position:relative;background:linear-gradient(145deg,var(--surface) 0%,var(--surface-warm) 100%);border:1px solid var(--border);border-radius:16px;padding:32px 36px;min-width:380px;max-width:90vw;box-shadow:0 25px 80px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.15);animation:slideUp 0.3s cubic-bezier(0.16,1,0.3,1)}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px) scale(0.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.news-popup__close{position:absolute;top:16px;right:20px;background:none;border:none;font-size:1.75rem;color:var(--text-3);cursor:pointer;padding:0;line-height:1;transition:all 0.2s ease;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.news-popup__close:hover{color:var(--text-1);background:var(--surface-warm);transform:rotate(90deg)}
+.news-popup__title{font-family:var(--serif);font-size:1.35rem;font-weight:400;margin-bottom:8px;color:var(--text-1);letter-spacing:-0.02em}
+.news-popup__subtitle{font-size:0.85rem;color:var(--text-3);margin-bottom:24px}
+.news-popup__list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.news-popup__list li{margin:0}
+.news-popup__list a{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;text-decoration:none;color:var(--text-1);transition:all 0.2s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden}
+.news-popup__list a::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transition:transform 0.2s ease}
+.news-popup__list a:hover{border-color:var(--accent);transform:translateX(4px);box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.news-popup__list a:hover::before{transform:scaleY(1)}
+.news-popup__publisher{font-size:0.95rem;font-weight:500;display:flex;align-items:center;gap:10px}
+.news-popup__publisher::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);opacity:0.6}
+.news-popup__arrow{font-size:1.1rem;opacity:0.4;transition:all 0.2s ease;transform:translateX(-4px)}
+.news-popup__list a:hover .news-popup__arrow{opacity:1;transform:translateX(0);color:var(--accent)}
+
 /* ═══ RESPONSIVE ═══ */
 @media(max-width:1024px){
   .hero-ed-grid{grid-template-columns:1fr;gap:2.5rem}
@@ -1141,13 +1197,13 @@ function getNewsThemeClass(theme: string): string {
             const categoryClasses = getCategoryClasses(article.tags);
             const primaryTag = getPrimaryTag(article.tags);
             return (
-              <li class="marketflow-item marketflow-item--own" data-cat={`blockstories ${categoryClasses}`}>
+              <li class="marketflow-item marketflow-item--own" data-cat={`blockstories ${categoryClasses}`} data-web-url={article.webUrl}>
                 <div>
-                  <div class="marketflow-item__time">{formatTime(article.publishDate)}</div>
+                  <div class="marketflow-item__time">{formatNewsTime(new Date(article.publishDate * 1000).toISOString())}</div>
                 </div>
                 <div class="marketflow-item__body">
                   <div class="marketflow-item__source">Blockstories</div>
-                  <h3><a href={article.webUrl} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{article.title}</a></h3>
+                  <h3>{article.title}</h3>
                   <p>{article.shortSummary || article.summary || article.subtitle || ''}</p>
                   {primaryTag && <span class="marketflow-item__tag">{primaryTag}</span>}
                 </div>
@@ -1162,14 +1218,13 @@ function getNewsThemeClass(theme: string): string {
         )}
         {/* Render latest news items (for "Latest" tab) */}
         {latestNewsItems.map((news) => (
-          <li class="marketflow-item" data-cat="latest">
+          <li class="marketflow-item" data-cat="latest" data-news-id={news.id} data-sources={JSON.stringify(news.sources)} data-urls={JSON.stringify(news.urls)}>
             <div>
               <div class="marketflow-item__time">{formatNewsTime(news.createdAt)}</div>
             </div>
             <div class="marketflow-item__body">
-              <div class="marketflow-item__source">{formatSource(news.source)}</div>
-              <h3><a href={news.url} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{news.title}</a></h3>
-              <p>{news.description}</p>
+              <div class="marketflow-item__source">{formatSources(news.sources)}</div>
+              <h3><a href="#" class="news-link" data-single-url={news.urls.length === 1 ? news.urls[0] : undefined}>{news.title}</a></h3>
               {news.theme && <span class="marketflow-item__tag">{news.theme}</span>}
             </div>
           </li>
@@ -1179,14 +1234,13 @@ function getNewsThemeClass(theme: string): string {
           items.map((news) => {
             const themeClass = getNewsThemeClass(news.theme);
             return (
-              <li class="marketflow-item" data-cat={themeClass}>
+              <li class="marketflow-item" data-cat={themeClass} data-news-id={news.id} data-sources={JSON.stringify(news.sources)} data-urls={JSON.stringify(news.urls)}>
                 <div>
                   <div class="marketflow-item__time">{formatNewsTime(news.createdAt)}</div>
                 </div>
                 <div class="marketflow-item__body">
-                  <div class="marketflow-item__source">{formatSource(news.source)}</div>
-                  <h3><a href={news.url} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{news.title}</a></h3>
-                  <p>{news.description}</p>
+                  <div class="marketflow-item__source">{formatSources(news.sources)}</div>
+                  <h3><a href="#" class="news-link" data-single-url={news.urls.length === 1 ? news.urls[0] : undefined}>{news.title}</a></h3>
                   {news.theme && <span class="marketflow-item__tag">{news.theme}</span>}
                 </div>
               </li>
@@ -1223,6 +1277,17 @@ function getNewsThemeClass(theme: string): string {
     </div>
     <div class="explore"><a href="/news">See all market updates <span class="chev">›</span></a></div>
   </section>
+
+  <!-- News Publisher Selection Popup -->
+  <div id="newsPopup" class="news-popup" style="display:none;">
+    <div class="news-popup__overlay"></div>
+    <div class="news-popup__content">
+      <button class="news-popup__close" aria-label="Close">&times;</button>
+      <h4 class="news-popup__title">Select News Source</h4>
+      <p class="news-popup__subtitle">This story is covered by multiple publishers</p>
+      <ul class="news-popup__list" id="newsPopupList"></ul>
+    </div>
+  </div>
 
   <!-- ═══ 7. SUBSCRIPTION BREAKER ═══ -->
   <div class="cta-break reveal">
@@ -1595,6 +1660,120 @@ async function loadBriefings(){
 if(document.querySelector('[data-briefing] h2')?.textContent?.includes('No briefing')){
   loadBriefings();
 }
+
+// ═══ News Publisher Popup ═══
+(function(){
+  console.log('[News Popup] Script starting...');
+  const popup = document.getElementById('newsPopup');
+  const popupList = document.getElementById('newsPopupList');
+  console.log('[News Popup] popup element:', popup ? 'found' : 'not found');
+  console.log('[News Popup] popupList element:', popupList ? 'found' : 'not found');
+  if (!popup || !popupList) {
+    console.log('[News Popup] Popup elements not found, aborting');
+    return;
+  }
+
+  const popupClose = popup.querySelector('.news-popup__close');
+  const popupOverlay = popup.querySelector('.news-popup__overlay');
+
+  function openPopup(sources, urls) {
+    while (popupList.firstChild) {
+      popupList.removeChild(popupList.firstChild);
+    }
+    sources.forEach((source, index) => {
+      const url = urls[index];
+      if (!url) return;
+
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+
+      const publisherSpan = document.createElement('span');
+      publisherSpan.className = 'news-popup__publisher';
+      publisherSpan.textContent = source;
+
+      const arrowSpan = document.createElement('span');
+      arrowSpan.className = 'news-popup__arrow';
+      arrowSpan.textContent = '→';
+
+      a.appendChild(publisherSpan);
+      a.appendChild(arrowSpan);
+      li.appendChild(a);
+      popupList.appendChild(li);
+    });
+    popup.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePopup() {
+    popup.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  popupClose?.addEventListener('click', closePopup);
+  popupOverlay?.addEventListener('click', closePopup);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); });
+
+  // Handle news link clicks - use event delegation on the list
+  const marketFlowList = document.querySelector('.marketflow-list');
+  if (!marketFlowList) {
+    console.log('[News Popup] marketFlowList not found');
+    return;
+  }
+  console.log('[News Popup] Initialized, found marketFlowList');
+
+  marketFlowList.addEventListener('click', (e) => {
+    console.log('[News Popup] Click detected on marketFlowList');
+    const target = e.target as HTMLElement;
+
+    // Find the closest marketflow-item
+    const item = target.closest('.marketflow-item') as HTMLElement | null;
+    if (!item) {
+      console.log('[News Popup] No .marketflow-item found');
+      return;
+    }
+
+    e.preventDefault();
+
+    // Handle Blockstories articles (they have marketflow-item--own class)
+    if (item.classList.contains('marketflow-item--own')) {
+      const webUrl = item.getAttribute('data-web-url');
+      if (webUrl) {
+        console.log('[News Popup] Opening Blockstories article:', webUrl);
+        window.open(webUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        console.log('[News Popup] Blockstories article missing webUrl');
+      }
+      return;
+    }
+
+    // Handle news aggregator items
+    const sourcesStr = item.getAttribute('data-sources');
+    const urlsStr = item.getAttribute('data-urls');
+    console.log('[News Popup] sourcesStr:', sourcesStr?.substring(0, 100));
+    console.log('[News Popup] urlsStr:', urlsStr?.substring(0, 100));
+    if (!sourcesStr || !urlsStr) {
+      console.log('[News Popup] Missing data attributes');
+      return;
+    }
+
+    const sources = JSON.parse(sourcesStr);
+    const urls = JSON.parse(urlsStr);
+    console.log('[News Popup] Parsed sources:', sources.length, 'urls:', urls.length);
+
+    if (sources.length === 0 || urls.length === 0) return;
+
+    if (urls.length === 1) {
+      console.log('[News Popup] Opening single URL:', urls[0]);
+      window.open(urls[0], '_blank', 'noopener,noreferrer');
+    } else {
+      console.log('[News Popup] Opening popup with', sources.length, 'publishers');
+      openPopup(sources, urls);
+    }
+  });
+})();
 </script>
 
 </Layout>
