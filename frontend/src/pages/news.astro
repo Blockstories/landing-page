@@ -1,63 +1,82 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getArticlesByPublication } from '../../../backend/db/queries.js';
-import type { Article } from '../../../backend/db/types.js';
+import { getLatestNews, type MappedRecord } from '../../../backend/services/softrService.js';
 
 const pageStart = performance.now();
 console.log(`[news.astro] Starting render`);
 
-const pubId = import.meta.env.BEEHIIV_INSTITUTIONAL_PUB_ID || "";
+// Softr news records
+let newsItems: MappedRecord[] = [];
+let featuredNews: MappedRecord[] = [];
 
-let articles: Article[] = [];
-let hasMore = false;
+// Only fetch data during SSR (not during static build)
+const isBuildTime = import.meta.env.MODE === "production" && !import.meta.env.SSR;
 
-if (pubId) {
+if (!isBuildTime) {
   try {
-    console.log(`[news.astro] Fetching articles...`);
+    console.log(`[news.astro] Fetching Softr news...`);
     const fetchStart = performance.now();
-    const result = await getArticlesByPublication(pubId, 10);
+    const result = await getLatestNews({ paging: { limit: 50 } });
     console.log(`[news.astro] Data fetched in ${(performance.now() - fetchStart).toFixed(2)}ms`);
-    articles = result.articles;
-    hasMore = result.hasMore;
+    newsItems = result.data;
+
+    // Filter featured news: visibility field is not empty
+    featuredNews = newsItems.filter(item => {
+      const visibility = item.fields?.visibility;
+      return visibility !== undefined && visibility !== null && visibility !== '';
+    });
+
+    console.log(`[news.astro] Total news: ${newsItems.length}, Featured: ${featuredNews.length}`);
   } catch (error) {
-    console.error("[news.astro] Failed to fetch articles:", error);
+    console.error("[news.astro] Failed to fetch news:", error);
   }
 }
 
 const totalTime = performance.now() - pageStart;
 console.log(`[news.astro] Total SSR time: ${totalTime.toFixed(2)}ms`);
 
-function calculateReadTime(content?: string): number {
-  if (!content) return 0;
-  return Math.ceil(content.trim().split(/\s+/).length / 200);
+function formatTimeAgo(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffHours < 1) return 'Just now';
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function formatDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleDateString("de-DE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
+function getSourceFromUrl(url: string): string {
+  if (!url) return 'Unknown';
+  try {
+    const hostname = new URL(url).hostname.replace('www.', '');
+    const parts = hostname.split('.');
+    return parts[parts.length - 2]?.charAt(0).toUpperCase() + parts[parts.length - 2]?.slice(1) || hostname;
+  } catch {
+    return 'Unknown';
+  }
 }
 
-function formatTime(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleTimeString("de-DE", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+function getNewsImage(item: MappedRecord): string | null {
+  const imageFile = item.fields?.imageFile;
+  if (Array.isArray(imageFile) && imageFile.length > 0) {
+    return imageFile[0]?.url || null;
+  }
+  if (typeof imageFile === 'object' && imageFile?.url) {
+    return imageFile.url;
+  }
+  return null;
 }
 
-function getTagClass(tag: string): string {
-  const tagMap: Record<string, string> = {
-    "regulation": "regulation",
-    "markets": "markets",
-    "infrastructure": "infrastructure",
-    "institutional": "institutional",
-    "tokenization": "tokenization",
-    "stablecoins": "stablecoins",
-    "mica": "regulation"
-  };
-  return tagMap[tag.toLowerCase()] || "news";
+function formatSources(sources: string[]): string {
+  if (sources.length === 0) return 'Unknown';
+  if (sources.length === 1) return sources[0];
+  if (sources.length > 10) return `${sources[0]} +${sources.length - 1} more`;
+  // Show all sources separated by commas
+  return sources.join(', ');
 }
 ---
 
@@ -84,6 +103,16 @@ function getTagClass(tag: string): string {
 .search-wrap{position:relative;flex:1;max-width:320px}
 .search-wrap input{width:100%;font-family:var(--sans);font-size:.78rem;padding:9px 14px 9px 34px;border:1px solid var(--border);border-radius:3px;background:var(--surface);outline:none;transition:border-color var(--ease)}
 .search-wrap input:focus{border-color:var(--text-3)}
+.no-results-message {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-3);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+}
+.no-results-message.hidden {
+  display: none;
+}
 .search-wrap input::placeholder{color:var(--ink-faint);font-family:var(--mono);font-size:.7rem}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:.75rem}
 .tabs{display:flex;gap:2px;flex-wrap:wrap}
@@ -107,9 +136,12 @@ function getTagClass(tag: string): string {
 .news-grid{display:grid;grid-template-columns:1fr 320px;gap:0;min-height:80vh}
 
 /* ═══ FEED ═══ */
-.feed{border-right:1px solid var(--border);padding-right:36px;min-width:0}
+.feed{border-right:1px solid var(--border);padding-right:36px;min-width:0;max-height:1400px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.feed::-webkit-scrollbar{width:6px}
+.feed::-webkit-scrollbar-track{background:transparent}
+.feed::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .feed-group{margin-bottom:0}
-.feed-group-label{font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);padding:20px 0 12px;margin-bottom:0;display:flex;align-items:center;gap:10px}
+.feed-group-label{font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);padding:20px 0 12px;margin-bottom:0;display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--bg);z-index:1}
 
 /* ═══ NEWS ITEM ═══ */
 .ni{display:grid;grid-template-columns:1fr;gap:0;padding:18px 0;border-bottom:1px solid var(--border-light);cursor:pointer;transition:background var(--ease)}
@@ -122,11 +154,27 @@ function getTagClass(tag: string): string {
 .ni-tags{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
 .ni-tag{font-family:var(--mono);font-size:.48rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:2px;background:var(--surface);border:1px solid var(--border);color:var(--text-3)}
 
-/* Recommended Read */
-.ni.rec{background:var(--accent-light);border-left:3px solid var(--accent);padding-left:12px;border-radius:0 4px 4px 0}
-.ni.rec:hover{margin:0;padding:18px 12px;background:rgba(90,138,134,.09)}
-.ni.rec .ni-tag{background:rgba(90,138,134,.1);border-color:rgba(90,138,134,.2);color:var(--accent)}
-.rec-badge{font-family:var(--mono);font-size:.45rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:500}
+/* News Item Clickable */
+.ni.news-item,
+.fc.news-item {
+  cursor: pointer;
+}
+.ni.news-item:hover,
+.fc.news-item:hover {
+  border-color: var(--text-3);
+}
+
+/* News Popup Publisher List */
+.news-popup__list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.news-popup__list li{margin:0}
+.news-popup__list a{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;text-decoration:none;color:var(--text-1);transition:all 0.2s cubic-bezier(0.16,1,0.3,1);position:relative;overflow:hidden}
+.news-popup__list a::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);transform:scaleY(0);transition:transform 0.2s ease}
+.news-popup__list a:hover{border-color:var(--accent);transform:translateX(4px);box-shadow:0 4px 20px rgba(0,0,0,.08)}
+.news-popup__list a:hover::before{transform:scaleY(1)}
+.news-popup__publisher{font-size:0.95rem;font-weight:500;display:flex;align-items:center;gap:10px}
+.news-popup__publisher::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--accent);opacity:0.6}
+.news-popup__arrow{font-size:1.1rem;opacity:0.4;transition:all 0.2s ease;transform:translateX(-4px)}
+.news-popup__list a:hover .news-popup__arrow{opacity:1;transform:translateX(0);color:var(--accent)}
 
 /* ═══ FEATURED NEWS ═══ */
 .featured{padding:28px 0 6px;border-bottom:1px solid var(--border)}
@@ -376,77 +424,60 @@ function getTagClass(tag: string): string {
   <!-- ═══ FEATURED NEWS ═══ -->
   <div class="featured">
     <div class="featured-top">
-      <div class="featured-label">Featured News — Last 24 Hours</div>
+      <div class="featured-label">Featured News</div>
       <div class="featured-arrow">Scroll <span>→</span></div>
     </div>
     <div class="featured-scroll-wrap">
     <div class="featured-scroll">
-      <div class="fc">
-        <div class="fc-visual" style="background:linear-gradient(135deg,#122B42 0%,#2a5a7a 100%)">
-          <span class="fc-visual-name">Deutsche Bank</span>
+      {featuredNews.length > 0 ? (
+        featuredNews.slice(0, 10).map((item) => {
+          const imageUrl = getNewsImage(item);
+          const title = String(item.fields?.title || '');
+          const bpoints = String(item.fields?.bpoints || '');
+          const createdAt = String(item.fields?.createdAt || '');
+          const theme = String(item.fields?.theme || 'news');
+          // Softr field names: 'links' for URLs, 'publisher' for sources
+          const links = item.fields?.links;
+          const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                     : typeof links === 'string' && links ? [links] : [];
+          const publisherField = item.fields?.publisher;
+          const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                         : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+          const displaySource = sources[0] || 'News';
+
+          return (
+            <div
+              class="fc news-item"
+              data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
+              data-urls={JSON.stringify(urls)}
+            >
+              {imageUrl ? (
+                <div class="fc-visual" style={`background-image:url(${imageUrl});background-size:cover;background-position:center;`}>
+                </div>
+              ) : (
+                <div class="fc-visual" style="background:linear-gradient(135deg,#1a1a2e 0%,#4a3f6b 100%)">
+                  <span class="fc-visual-name">{displaySource}</span>
+                </div>
+              )}
+              <div class="fc-body">
+                <div class="fc-source">{displaySource}</div>
+                <div class="fc-title">{title}</div>
+                <div class="fc-time">{formatTimeAgo(createdAt)}</div>
+                <span class="fc-tag">{theme}</span>
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div class="fc">
+          <div class="fc-visual" style="background:linear-gradient(135deg,#1a1a2e 0%,#4a3f6b 100%)">
+            <span class="fc-visual-name">No Featured News</span>
+          </div>
+          <div class="fc-body">
+            <div class="fc-title">Check back later for featured updates</div>
+          </div>
         </div>
-        <div class="fc-body">
-          <div class="fc-source">Reuters</div>
-          <div class="fc-title">Deutsche Bank expands digital custody to five new European markets</div>
-          <div class="fc-time">2 hours ago</div>
-          <span class="fc-tag">Institutional</span>
-        </div>
-      </div>
-      <div class="fc">
-        <div class="fc-visual" style="background:linear-gradient(135deg,#1652f0 0%,#0a3298 100%)">
-          <span class="fc-visual-name">Coinbase</span>
-        </div>
-        <div class="fc-body">
-          <div class="fc-source">Bloomberg</div>
-          <div class="fc-title">Coinbase launches MiCA-compliant institutional platform for EU</div>
-          <div class="fc-time">4 hours ago</div>
-          <span class="fc-tag">Regulation</span>
-        </div>
-      </div>
-      <div class="fc">
-        <div class="fc-visual" style="background:linear-gradient(135deg,#0b3d2e 0%,#1a7a56 100%)">
-          <span class="fc-visual-name">BlackRock</span>
-        </div>
-        <div class="fc-body">
-          <div class="fc-source">FT</div>
-          <div class="fc-title">BlackRock BUIDL surpasses $2.8B as European allocators drive inflows</div>
-          <div class="fc-time">5 hours ago</div>
-          <span class="fc-tag">Markets</span>
-        </div>
-      </div>
-      <div class="fc">
-        <div class="fc-visual" style="background:linear-gradient(135deg,#1a1a2e 0%,#4a3f6b 100%)">
-          <span class="fc-visual-name">ECB</span>
-        </div>
-        <div class="fc-body">
-          <div class="fc-source">Reuters</div>
-          <div class="fc-title">ECB announces Phase 3 of digital euro pilot with 12 new banks</div>
-          <div class="fc-time">6 hours ago</div>
-          <span class="fc-tag">Regulation</span>
-        </div>
-      </div>
-      <div class="fc">
-        <div class="fc-visual" style="background:linear-gradient(135deg,#8b1a1a 0%,#c0392b 100%)">
-          <span class="fc-visual-name">CME Group</span>
-        </div>
-        <div class="fc-body">
-          <div class="fc-source">The Block</div>
-          <div class="fc-title">CME Group launches Solana futures with immediate European demand</div>
-          <div class="fc-time">12 hours ago</div>
-          <span class="fc-tag">Markets</span>
-        </div>
-      </div>
-      <div class="fc">
-        <div class="fc-visual" style="background:linear-gradient(135deg,#2c3e50 0%,#5A8A86 100%)">
-          <span class="fc-visual-name">Commerzbank</span>
-        </div>
-        <div class="fc-body">
-          <div class="fc-source">Handelsblatt</div>
-          <div class="fc-title">Commerzbank crypto subsidiary completes first cross-border settlement</div>
-          <div class="fc-time">14 hours ago</div>
-          <span class="fc-tag">Infrastructure</span>
-        </div>
-      </div>
+      )}
     </div>
     </div>
   </div>
@@ -466,48 +497,54 @@ function getTagClass(tag: string): string {
     <!-- ═══ FEED ═══ -->
     <div class="feed">
 
-      {articles.length > 0 ? (
+      {newsItems.length > 0 ? (
         <div class="feed-group">
-          <div class="feed-group-label">Latest Articles</div>
+          <div class="feed-group-label">Latest News</div>
 
-          {articles.map((article, index) => (
-            <article class={"ni " + (index === 0 ? "rec" : "")} data-cat={article.tags.join(" ")}>
-              <div class="ni-meta">
-                <div class="ni-time">{formatTime(article.publishDate)}</div>
-                <div class="ni-src">{article.authors.map(a => a.name).join(" & ")}</div>
-                {index === 0 && <span class="rec-badge">Recommended Read</span>}
-              </div>
-              <div class="ni-body">
-                <h3>{article.title}</h3>
-                <p>{article.summary || ""}</p>
-                <div class="ni-tags">
-                  {article.tags.map(tag => (
-                    <span class="ni-tag">{tag}</span>
-                  ))}
+          {newsItems.map((item) => {
+            const title = String(item.fields?.title || '');
+            const bpoints = String(item.fields?.bpoints || '');
+            const createdAt = String(item.fields?.createdAt || '');
+            const theme = String(item.fields?.theme || 'news');
+            // Softr field names: 'links' for URLs, 'publisher' for sources
+            const links = item.fields?.links;
+            const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                       : typeof links === 'string' && links ? [links] : [];
+            const publisherField = item.fields?.publisher;
+            const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                           : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+            const displaySource = formatSources(sources);
+
+            return (
+              <article
+                class="ni news-item"
+                data-cat={theme}
+                data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
+                data-urls={JSON.stringify(urls)}
+              >
+                <div class="ni-meta">
+                  <div class="ni-time">{formatTimeAgo(createdAt)}</div>
+                  <div class="ni-src">{displaySource}</div>
                 </div>
-              </div>
-              {article.webUrl && (
-                <a href={article.webUrl} class="news-card-link" target="_blank" rel="noopener" style="display: block; margin-top: 8px; font-family: var(--mono); font-size: .55rem; color: var(--accent);">
-                  Read article · {calculateReadTime(article.content)}min
-                </a>
-              )}
-            </article>
-          ))}
+                <div class="ni-body">
+                  <h3>{title}</h3>
+                  <p>{bpoints}</p>
+                  <div class="ni-tags">
+                    <span class="ni-tag">{theme}</span>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : (
         <div class="feed-group">
-          <div class="feed-group-label">No Articles</div>
+          <div class="feed-group-label">No News</div>
           <div class="ni">
             <div class="ni-body">
-              <p>No articles available. Please check back later.</p>
+              <p>No news available. Please check back later.</p>
             </div>
           </div>
-        </div>
-      )}
-
-      {hasMore && (
-        <div class="load-more">
-          <button>Load More</button>
         </div>
       )}
     </div>
@@ -754,6 +791,17 @@ function getTagClass(tag: string): string {
 
 </div><!-- end wrap -->
 
+  <!-- ═══ News Publisher Selection Popup ═══ -->
+  <div id="newsPopup" class="news-popup" style="display:none;">
+    <div class="news-popup__overlay"></div>
+    <div class="news-popup__content">
+      <button class="news-popup__close" aria-label="Close">&times;</button>
+      <h4 class="news-popup__title">Select News Source</h4>
+      <p class="news-popup__subtitle">This story is covered by multiple publishers.</p>
+      <ul class="news-popup__list" id="newsPopupList"></ul>
+    </div>
+  </div>
+
   <!-- ═══ Subscription Popup ═══ -->
   <div id="subPopup" class="news-popup" style="display:none;">
     <div class="news-popup__overlay"></div>
@@ -870,6 +918,181 @@ clocks();setInterval(clocks,30000);
 // ═══ Scroll Reveal ═══
 const observer=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+</script>
+
+<script>
+  // ═══ News Publisher Popup Handler ═══
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('[News Popup] Initializing...');
+    const popup = document.getElementById('newsPopup');
+    const popupList = document.getElementById('newsPopupList');
+    if (!popup || !popupList) {
+      console.log('[News Popup] Missing popup elements');
+      return;
+    }
+    console.log('[News Popup] Found popup elements');
+
+    const popupClose = popup.querySelector('.news-popup__close');
+    const popupOverlay = popup.querySelector('.news-popup__overlay');
+
+    function openPopup(sources, urls) {
+      while (popupList.firstChild) {
+        popupList.removeChild(popupList.firstChild);
+      }
+      sources.forEach((source, index) => {
+        const url = urls[index];
+        if (!url) return;
+
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+
+        const publisherSpan = document.createElement('span');
+        publisherSpan.className = 'news-popup__publisher';
+        publisherSpan.textContent = source;
+
+        const arrowSpan = document.createElement('span');
+        arrowSpan.className = 'news-popup__arrow';
+        arrowSpan.textContent = '→';
+
+        a.appendChild(publisherSpan);
+        a.appendChild(arrowSpan);
+        li.appendChild(a);
+        popupList.appendChild(li);
+      });
+      popup.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePopup() {
+      popup.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    popupClose?.addEventListener('click', closePopup);
+    popupOverlay?.addEventListener('click', closePopup);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); });
+
+    // Handle news item clicks
+    const newsContainers = document.querySelectorAll('.feed, .featured-scroll');
+    console.log('[News Popup] Found containers:', newsContainers.length);
+    if (newsContainers.length === 0) {
+      console.log('[News Popup] No containers found');
+      return;
+    }
+
+    newsContainers.forEach((container, i) => {
+      console.log('[News Popup] Container', i, 'class:', container.className);
+      container.addEventListener('click', (e) => {
+        console.log('[News Popup] Click detected');
+        const item = e.target.closest('.news-item');
+        if (!item) {
+          console.log('[News Popup] No .news-item found');
+          return;
+        }
+        console.log('[News Popup] Found news-item');
+
+        e.preventDefault();
+
+        const sourcesStr = item.getAttribute('data-sources');
+        const urlsStr = item.getAttribute('data-urls');
+        console.log('[News Popup] sources:', sourcesStr?.substring(0, 50));
+        console.log('[News Popup] urls:', urlsStr?.substring(0, 50));
+        if (!sourcesStr || !urlsStr) return;
+
+        let sources, urls;
+        try {
+          sources = JSON.parse(sourcesStr);
+          urls = JSON.parse(urlsStr);
+        } catch (err) {
+          console.log('[News Popup] Failed to parse data:', err);
+          return;
+        }
+
+        console.log('[News Popup] Parsed:', sources.length, 'sources,', urls.length, 'urls');
+
+        if (!Array.isArray(urls) || urls.length === 0) {
+          console.log('[News Popup] No URLs to open');
+          return;
+        }
+
+        if (urls.length === 1) {
+          console.log('[News Popup] Opening single URL:', urls[0]);
+          window.open(urls[0], '_blank', 'noopener,noreferrer');
+        } else {
+          // Fallback: if no sources, use domains from URLs
+          const displaySources = sources?.length ? sources : urls.map((url) => {
+            try {
+              const hostname = new URL(url).hostname.replace('www.', '');
+              const parts = hostname.split('.');
+              return parts[parts.length - 2]?.charAt(0).toUpperCase() + parts[parts.length - 2]?.slice(1) || hostname;
+            } catch {
+              return 'News';
+            }
+          });
+          console.log('[News Popup] Opening popup with', displaySources.length, 'sources');
+          openPopup(displaySources, urls);
+        }
+      });
+    });
+  });
+</script>
+
+<script>
+  // ═══ Search Functionality ═══
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('.search-wrap input[type="text"]');
+    const newsItems = document.querySelectorAll('.feed .news-item');
+    const featuredItems = document.querySelectorAll('.featured-scroll .news-item');
+
+    if (!searchInput) return;
+
+    const feedGroup = document.querySelector('.feed .feed-group');
+    let noResultsMsg = feedGroup?.querySelector('.no-results-message');
+    if (!noResultsMsg && feedGroup) {
+      noResultsMsg = document.createElement('div');
+      noResultsMsg.className = 'no-results-message hidden';
+      noResultsMsg.textContent = 'No news found matching your search.';
+      feedGroup.appendChild(noResultsMsg);
+    }
+
+    searchInput.addEventListener('input', function(e) {
+      const query = e.target.value.toLowerCase().trim();
+      let visibleCount = 0;
+
+      // Filter main news feed
+      newsItems.forEach(item => {
+        const title = item.querySelector('h3')?.textContent?.toLowerCase() || '';
+        const bpoints = item.querySelector('p')?.textContent?.toLowerCase() || '';
+        const source = item.querySelector('.ni-src')?.textContent?.toLowerCase() || '';
+        const theme = item.getAttribute('data-cat')?.toLowerCase() || '';
+
+        const matches = title.includes(query) ||
+                       bpoints.includes(query) ||
+                       source.includes(query) ||
+                       theme.includes(query);
+
+        item.style.display = matches ? '' : 'none';
+        if (matches) visibleCount++;
+      });
+
+      // Filter featured news
+      featuredItems.forEach(item => {
+        const title = item.querySelector('.fc-title')?.textContent?.toLowerCase() || '';
+        const source = item.querySelector('.fc-source')?.textContent?.toLowerCase() || '';
+
+        const matches = title.includes(query) || source.includes(query);
+        item.style.display = matches ? '' : 'none';
+      });
+
+      // Show/hide no results message
+      if (noResultsMsg) {
+        noResultsMsg.classList.toggle('hidden', visibleCount > 0 || !query);
+      }
+    });
+  });
 </script>
 
 <script>
