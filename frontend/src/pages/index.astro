@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import { getArticlesByPublication, getArticlesByTags, getArticleByPublicationIdAndPostId } from '../../../backend/db/queries.js';
+import { getNewsWithMappedFields, MappedRecord } from '../../../backend/services/softrService.js';
 
 const pageStart = performance.now();
 console.log(`[index.astro] Starting render`);
@@ -89,6 +90,53 @@ if (!isBuildTime) {
   }
 }
 
+// News Aggregator Types & Fetch
+interface NewsItem {
+  id: string;
+  title: string;
+  description: string;
+  source: string;
+  createdAt: string;
+  url: string;
+  theme: string;
+}
+
+// Group news items by theme and limit to 5 per theme
+function groupNewsByTheme(items: NewsItem[]): Map<string, NewsItem[]> {
+  const grouped = new Map<string, NewsItem[]>();
+  for (const item of items) {
+    const theme = item.theme || 'Other';
+    if (!grouped.has(theme)) {
+      grouped.set(theme, []);
+    }
+    if (grouped.get(theme)!.length < 5) {
+      grouped.get(theme)!.push(item);
+    }
+  }
+  return grouped;
+}
+
+let newsItems: NewsItem[] = [];
+let newsByTheme = new Map<string, NewsItem[]>();
+if (!isBuildTime) {
+  try {
+    const newsResult = await getNewsWithMappedFields({ limit: 100 });
+    newsItems = newsResult.data.map((record: MappedRecord) => ({
+      id: record.id,
+      title: String(record.fields['Title'] || record.fields['title'] || ''),
+      description: String(record.fields['Description'] || record.fields['description'] || record.fields['Summary'] || record.fields['summary'] || ''),
+      source: String(record.fields['Source'] || record.fields['source'] || record.fields['Publisher'] || record.fields['publisher'] || ''),
+      createdAt: String(record.fields['Created at'] || record.fields['Created At'] || record.fields['created_at'] || record.fields['firstPublished'] || record.created_at || ''),
+      url: String(record.fields['URL'] || record.fields['url'] || record.fields['Link'] || record.fields['link'] || '#'),
+      theme: String(record.fields['Theme'] || record.fields['theme'] || ''),
+    })).filter((item: NewsItem) => item.title);
+    newsByTheme = groupNewsByTheme(newsItems);
+    console.log(`[index.astro] Fetched ${newsItems.length} news items, grouped into ${newsByTheme.size} themes`);
+  } catch (error) {
+    console.error("[index.astro] Failed to fetch news:", error);
+  }
+}
+
 // Helper function to format time from timestamp
 function formatTime(ts: number): string {
   return new Date(ts * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -139,6 +187,30 @@ function getPrimaryTag(tags: string[]): string | null {
     if (match) return match.charAt(0).toUpperCase() + match.slice(1);
   }
   return tags[0] ? tags[0].charAt(0).toUpperCase() + tags[0].slice(1) : null;
+}
+
+// Helper function to format time from date string (for news items)
+function formatNewsTime(dateStr: string): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+// Helper function to format source with spaces after commas
+function formatSource(source: string): string {
+  return source.replace(/,/g, ', ');
+}
+
+// Helper function to map news theme to tab categories
+function getNewsThemeClass(theme: string): string {
+  const t = theme.toLowerCase().trim();
+  // Map theme values to tab data-f values
+  if (t === 'tokenization') return 'tokenization';
+  if (t === 'stablecoins') return 'stablecoins';
+  if (t === 'regulation and policy') return 'regulation-policy';
+  if (t === 'market structure') return 'market-structure';
+  return t;
 }
 ---
 
@@ -412,6 +484,8 @@ function getPrimaryTag(tags: string[]): string | null {
 .marketflow-item:hover{background:rgba(0,0,0,.01)}
 .marketflow-item__time{font-family:var(--mono);font-size:.65rem;color:var(--text-3);padding-top:2px}
 .marketflow-item__source{font-family:var(--mono);font-size:.5rem;letter-spacing:.05em;text-transform:uppercase;color:var(--text-3);margin-top:3px}
+.marketflow-item__body .marketflow-item__source{margin-top:0;margin-bottom:4px;color:var(--text-2)}
+.marketflow-item--own .marketflow-item__body .marketflow-item__source{color:var(--accent)}
 .marketflow-item__body h3{font-size:.9rem;font-weight:500;line-height:1.45;margin-bottom:3px}
 .marketflow-item__body p{font-size:.78rem;line-height:1.55;color:var(--text-2)}
 .marketflow-item__tag{
@@ -1003,9 +1077,10 @@ function getPrimaryTag(tags: string[]): string | null {
     <div class="tabs" id="flowTabs">
       <button class="tab on" data-f="latest">Latest</button>
       <button class="tab" data-f="blockstories">Blockstories</button>
-      <button class="tab" data-f="tokenization">Tokenization &amp; Stablecoins</button>
-      <button class="tab" data-f="regulation">Regulation</button>
-      <button class="tab" data-f="markets">Markets</button>
+      <button class="tab" data-f="tokenization">Tokenization</button>
+      <button class="tab" data-f="stablecoins">Stablecoins</button>
+      <button class="tab" data-f="regulation-policy">Regulation and Policy</button>
+      <button class="tab" data-f="market-structure">Market Structure</button>
     </div>
     <div class="marketflow-grid">
       <ul class="marketflow-list">
@@ -1017,9 +1092,9 @@ function getPrimaryTag(tags: string[]): string | null {
               <li class="marketflow-item marketflow-item--own" data-cat={`blockstories ${categoryClasses}`}>
                 <div>
                   <div class="marketflow-item__time">{formatTime(article.publishDate)}</div>
-                  <div class="marketflow-item__source">Blockstories</div>
                 </div>
                 <div class="marketflow-item__body">
+                  <div class="marketflow-item__source">Blockstories</div>
                   <h3><a href={article.webUrl} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{article.title}</a></h3>
                   <p>{article.shortSummary || article.summary || article.subtitle || ''}</p>
                   {primaryTag && <span class="marketflow-item__tag">{primaryTag}</span>}
@@ -1029,38 +1104,35 @@ function getPrimaryTag(tags: string[]): string | null {
           })
         ) : (
           <li class="marketflow-item marketflow-item--own" data-cat="blockstories tokenization">
-            <div><div class="marketflow-item__time">16:42</div><div class="marketflow-item__source">Blockstories</div></div>
-            <div class="marketflow-item__body"><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="marketflow-item__tag">Interview</span></div>
+            <div><div class="marketflow-item__time">16:42</div></div>
+            <div class="marketflow-item__body"><div class="marketflow-item__source">Blockstories</div><h3>Exclusive: Inside BBVA's Digital Assets Strategy</h3><p>We spoke with BBVA's Head of Digital Assets about the bank's crypto offerings, European expansion and infrastructure.</p><span class="marketflow-item__tag">Interview</span></div>
           </li>
         )}
-        <li class="marketflow-item" data-cat="markets tokenization">
-          <div><div class="marketflow-item__time">15:28</div><div class="marketflow-item__source">Reuters</div></div>
-          <div class="marketflow-item__body"><h3>BlackRock expands tokenized money market fund to Polygon network</h3><p>The world's largest asset manager extends its blockchain-native treasury product to a second network.</p></div>
-        </li>
-        <li class="marketflow-item" data-cat="regulation tokenization">
-          <div><div class="marketflow-item__time">14:15</div><div class="marketflow-item__source">Bloomberg</div></div>
-          <div class="marketflow-item__body"><h3>ECB digital euro pilot enters phase two with 50 participating banks</h3><p>Central bank digital currency initiative expands scope across eurozone member states.</p></div>
-        </li>
-        <li class="marketflow-item" data-cat="regulation">
-          <div><div class="marketflow-item__time">13:03</div><div class="marketflow-item__source">FT</div></div>
-          <div class="marketflow-item__body"><h3>Singapore MAS releases updated stablecoin regulatory framework</h3><p>New rules establish reserve requirements and disclosure standards for stablecoin issuers.</p></div>
-        </li>
-        <li class="marketflow-item" data-cat="markets">
-          <div><div class="marketflow-item__time">11:56</div><div class="marketflow-item__source">CoinDesk</div></div>
-          <div class="marketflow-item__body"><h3>CME Group to launch Solana futures contracts in March</h3><p>Regulated derivatives venue expands digital asset offering beyond Bitcoin and Ethereum.</p></div>
-        </li>
-        <li class="marketflow-item" data-cat="tokenization">
-          <div><div class="marketflow-item__time">10:42</div><div class="marketflow-item__source">Handelsblatt</div></div>
-          <div class="marketflow-item__body"><h3>Commerzbank's crypto subsidiary processes first institutional trade</h3><p>German banking giant enters active digital asset trading through newly licensed entity.</p></div>
-        </li>
-        <li class="marketflow-item" data-cat="regulation markets">
-          <div><div class="marketflow-item__time">09:58</div><div class="marketflow-item__source">ECB</div></div>
-          <div class="marketflow-item__body"><h3>ECB publishes new framework for digital asset reserve holdings</h3><p>Updated guidance outlines how eurozone banks can classify and report digital asset positions on balance sheets.</p></div>
-        </li>
-        <li class="marketflow-item" data-cat="markets">
-          <div><div class="marketflow-item__time">09:14</div><div class="marketflow-item__source">The Block</div></div>
-          <div class="marketflow-item__body"><h3>Tokenized US Treasury products surpass $4B in total AUM</h3><p>Institutional demand for on-chain government bonds continues to accelerate across multiple issuers.</p></div>
-        </li>
+        {/* Render news items grouped by theme, max 5 per theme */}
+        {Array.from(newsByTheme.entries()).map(([theme, items]) =>
+          items.map((news) => {
+            const themeClass = getNewsThemeClass(news.theme);
+            return (
+              <li class="marketflow-item" data-cat={themeClass}>
+                <div>
+                  <div class="marketflow-item__time">{formatNewsTime(news.createdAt)}</div>
+                </div>
+                <div class="marketflow-item__body">
+                  <div class="marketflow-item__source">{formatSource(news.source)}</div>
+                  <h3><a href={news.url} target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit;">{news.title}</a></h3>
+                  <p>{news.description}</p>
+                  {news.theme && <span class="marketflow-item__tag">{news.theme}</span>}
+                </div>
+              </li>
+            );
+          })
+        )}
+        {newsByTheme.size === 0 && (
+          <li class="marketflow-item" data-cat="markets tokenization">
+            <div><div class="marketflow-item__time">15:28</div></div>
+            <div class="marketflow-item__body"><div class="marketflow-item__source">Reuters</div><h3>BlackRock expands tokenized money market fund to Polygon network</h3><p>The world's largest asset manager extends its blockchain-native treasury product to a second network.</p></div>
+          </li>
+        )}
       </ul>
       <aside class="sidebar">
         <div class="sidebar-sec">
@@ -1197,7 +1269,7 @@ function getPrimaryTag(tags: string[]): string | null {
 
 </div><!-- end wrap -->
 
-<!-- ═══ 9. DATA ═══ -->
+<!-- ═══ 9. DATA ═══ (hidden)
 <section class="data-sec reveal">
   <div class="wrap">
     <div class="sdiv" style="margin-bottom:24px">
@@ -1218,6 +1290,7 @@ function getPrimaryTag(tags: string[]): string | null {
     </div>
   </div>
 </section>
+-->
 
 <div class="wrap">
 
@@ -1337,18 +1410,36 @@ clocks();setInterval(clocks,30000);
 // ═══ Market Flow Tabs ═══
 const flowTabs=document.getElementById('flowTabs');
 if(flowTabs){
-  const items=document.querySelectorAll('.marketflow-list .marketflow-item');
+  const items=Array.from(document.querySelectorAll('.marketflow-list .marketflow-item'));
   flowTabs.querySelectorAll('.tab').forEach(t=>{
     t.addEventListener('click',()=>{
       flowTabs.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
       t.classList.add('on');
       const f=t.dataset.f;
+      let latestCount=0;
       items.forEach(i=>{
-        const cats=(i.dataset.cat||'').split(' ');
+        const cat=i.dataset.cat||'';
         const own=i.classList.contains('marketflow-item--own');
-        if(f==='latest')i.style.display=own?'none':'';
-        else if(f==='blockstories')i.style.display=own?'':'none';
-        else i.style.display=cats.includes(f)&&!own?'':'none';
+        if(f==='latest'){
+          // Latest shows first 5 news items (not Blockstories)
+          if(own){
+            i.style.display='none';
+          }else{
+            i.style.display=latestCount<5?'':'none';
+            if(latestCount<5)latestCount++;
+          }
+        }else if(f==='blockstories'){
+          // Blockstories tab shows only Blockstories articles
+          i.style.display=own?'':'none';
+        }else{
+          // Theme tabs show items matching their theme (max 5)
+          if(cat===f&&!own){
+            i.style.display=latestCount<5?'':'none';
+            if(latestCount<5)latestCount++;
+          }else{
+            i.style.display='none';
+          }
+        }
       });
     });
   });
