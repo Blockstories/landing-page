@@ -1,13 +1,17 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getLatestNews, type MappedRecord } from '../../../backend/services/softrService.js';
+import { getLatestNews, getNewsForThemes, type MappedRecord } from '../../../backend/services/softrService.js';
 
 const pageStart = performance.now();
 console.log(`[news.astro] Starting render`);
 
+// Theme mapping for Softr views
+const NEWS_THEMES = ['tokenization', 'stablecoins', 'regulation', 'market-structure'];
+
 // Softr news records
 let newsItems: MappedRecord[] = [];
 let featuredNews: MappedRecord[] = [];
+let themedNews: Record<string, MappedRecord[]> = {};
 
 // Only fetch data during SSR (not during static build)
 const isBuildTime = import.meta.env.MODE === "production" && !import.meta.env.SSR;
@@ -16,9 +20,17 @@ if (!isBuildTime) {
   try {
     console.log(`[news.astro] Fetching Softr news...`);
     const fetchStart = performance.now();
-    const result = await getLatestNews({ paging: { limit: 50 } });
-    console.log(`[news.astro] Data fetched in ${(performance.now() - fetchStart).toFixed(2)}ms`);
-    newsItems = result.data;
+
+    // Fetch latest news and themed news in parallel
+    const [latestResult, themedResults] = await Promise.all([
+      getLatestNews({ paging: { limit: 50 } }),
+      getNewsForThemes(NEWS_THEMES, { paging: { limit: 20 } }),
+    ]);
+
+    newsItems = latestResult.data;
+    themedNews = Object.fromEntries(
+      Object.entries(themedResults).map(([theme, result]) => [theme, result.data])
+    );
 
     // Filter featured news: visibility field is not empty
     featuredNews = newsItems.filter(item => {
@@ -26,7 +38,11 @@ if (!isBuildTime) {
       return visibility !== undefined && visibility !== null && visibility !== '';
     });
 
+    console.log(`[news.astro] Data fetched in ${(performance.now() - fetchStart).toFixed(2)}ms`);
     console.log(`[news.astro] Total news: ${newsItems.length}, Featured: ${featuredNews.length}`);
+    console.log(`[news.astro] Themed news:`, Object.fromEntries(
+      Object.entries(themedNews).map(([k, v]) => [k, v.length])
+    ));
   } catch (error) {
     console.error("[news.astro] Failed to fetch news:", error);
   }
@@ -66,17 +82,6 @@ function formatNewsTime(dateString: string): string {
   return `${formattedDate}, ${timeStr}`;
 }
 
-function getSourceFromUrl(url: string): string {
-  if (!url) return 'Unknown';
-  try {
-    const hostname = new URL(url).hostname.replace('www.', '');
-    const parts = hostname.split('.');
-    return parts[parts.length - 2]?.charAt(0).toUpperCase() + parts[parts.length - 2]?.slice(1) || hostname;
-  } catch {
-    return 'Unknown';
-  }
-}
-
 function getNewsImage(item: MappedRecord): string | null {
   const imageFile = item.fields?.imageFile;
   if (Array.isArray(imageFile) && imageFile.length > 0) {
@@ -94,6 +99,16 @@ function formatSources(sources: string[]): string {
   if (sources.length > 10) return `${sources[0]} +${sources.length - 1} more`;
   // Show all sources separated by commas
   return sources.join(', ');
+}
+
+// Helper function to normalize Softr theme to filter category
+function getFilterCategory(theme: string): string {
+  const t = theme.toLowerCase().trim();
+  if (t === 'tokenization') return 'tokenization';
+  if (t === 'stablecoins') return 'stablecoins';
+  if (t === 'regulation' || t === 'regulation and policy') return 'regulation-policy';
+  if (t === 'market-structure' || t === 'market structure') return 'market-structure';
+  return t;
 }
 ---
 
@@ -132,6 +147,13 @@ function formatSources(sources: string[]): string {
 }
 .search-wrap input::placeholder{color:var(--ink-faint);font-family:var(--mono);font-size:.7rem}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-3);font-size:.75rem}
+
+/* ═══ TAG FILTERS ═══ */
+.tag-filters{display:flex;gap:8px;flex-wrap:wrap;flex:1;justify-content:flex-end;max-width:70%}
+.tag-filter{font-family:var(--mono);font-size:.55rem;letter-spacing:.04em;text-transform:uppercase;padding:6px 12px;border-radius:3px;cursor:pointer;color:var(--text-3);background:transparent;border:1px solid var(--border);transition:all var(--ease);white-space:nowrap}
+.tag-filter:hover{color:var(--text-2);border-color:var(--text-3)}
+.tag-filter.active{background:var(--text-1);color:var(--bg);border-color:var(--text-1)}
+
 .tabs{display:flex;gap:2px;flex-wrap:wrap}
 .tab{font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:6px 14px;border-radius:2px;cursor:pointer;color:var(--text-3);background:none;border:1px solid transparent;transition:all var(--ease)}
 .tab:hover{color:var(--text-2);border-color:var(--border)}
@@ -158,6 +180,7 @@ function formatSources(sources: string[]): string {
 .feed::-webkit-scrollbar-track{background:transparent}
 .feed::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .feed-group{margin-bottom:0}
+.feed-group.hidden{display:none}
 .feed-group-label{font-family:var(--mono);font-size:.5rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);padding:20px 0 12px;margin-bottom:0;display:flex;align-items:center;gap:10px;position:sticky;top:0;background:var(--bg);z-index:1}
 
 /* ═══ NEWS ITEM ═══ */
@@ -369,12 +392,16 @@ function formatSources(sources: string[]): string {
   .cta-break{flex-direction:column;text-align:left;padding:32px 28px}
   .timeline-headline{font-size:.75rem}
   .timeline-event{padding-right:14px}
+  .tag-filters{max-width:100%;justify-content:flex-start;margin-top:12px}
+  .filter-bar{flex-direction:column;align-items:stretch}
 }
 @media(max-width:640px){
   .wrap{padding:0 20px}
   .nav{display:none}
   .filter-bar{flex-direction:column;align-items:stretch}
   .search-wrap{max-width:100%}
+  .tag-filters{justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+  .tag-filter{flex-shrink:0}
   .tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
   .fc{flex:0 0 200px}
   .timeline-arrow{width:26px;height:26px;font-size:.7rem}
@@ -451,10 +478,10 @@ function formatSources(sources: string[]): string {
         featuredNews.slice(0, 10).map((item) => {
           const imageUrl = getNewsImage(item);
           const title = String(item.fields?.title || '');
-          const bpoints = String(item.fields?.bpoints || '');
           // Softr created date can be in various field names
           const createdAt = String(item.fields?.['Created At'] || item.fields?.created_at || item.fields?.firstPublished || item.fields?.createdAt || item.created_at || '');
-          const theme = String(item.fields?.theme || 'news');
+          const rawTheme = String(item.fields?.theme || 'news');
+          const filterCategory = getFilterCategory(rawTheme);
           // Softr field names: 'links' for URLs, 'publisher' for sources
           const links = item.fields?.links;
           const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
@@ -483,7 +510,7 @@ function formatSources(sources: string[]): string {
                 <div class="fc-title">{title}</div>
                 <div class="fc-meta">
                   <div class="fc-time">{formatNewsTime(createdAt)}</div>
-                  <span class="fc-tag">{theme}</span>
+                  <span class="fc-tag">{filterCategory}</span>
                 </div>
               </div>
             </div>
@@ -510,6 +537,13 @@ function formatSources(sources: string[]): string {
       <span class="search-icon">&#8981;</span>
       <input type="text" placeholder="Search news..." aria-label="Search news">
     </div>
+    <div class="tag-filters">
+      <button class="tag-filter active" data-filter="all">ALL</button>
+      <button class="tag-filter" data-filter="tokenization">TOKENIZATION</button>
+      <button class="tag-filter" data-filter="stablecoins">STABLECOINS</button>
+      <button class="tag-filter" data-filter="regulation-policy">REGULATION AND POLICY</button>
+      <button class="tag-filter" data-filter="market-structure">MARKET STRUCTURE</button>
+    </div>
   </div>
 
   <!-- ═══ MAIN GRID ═══ -->
@@ -519,45 +553,197 @@ function formatSources(sources: string[]): string {
     <div class="feed">
 
       {newsItems.length > 0 ? (
-        <div class="feed-group">
-          <div class="feed-group-label">Latest News</div>
+        <>
+          {/* ALL - Latest News */}
+          <div class="feed-group theme-feed" id="feed-all" data-theme="all">
+            <div class="feed-group-label">Latest News</div>
+            {newsItems.map((item) => {
+              const title = String(item.fields?.title || '');
+              const createdAt = String(item.fields?.['Created At'] || item.fields?.created_at || item.fields?.firstPublished || item.fields?.createdAt || item.created_at || '');
+              const rawTheme = String(item.fields?.theme || 'news');
+              const filterCategory = getFilterCategory(rawTheme);
+              const links = item.fields?.links;
+              const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                         : typeof links === 'string' && links ? [links] : [];
+              const publisherField = item.fields?.publisher;
+              const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                             : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+              const displaySource = formatSources(sources);
 
-          {newsItems.map((item) => {
-            const title = String(item.fields?.title || '');
-            const bpoints = String(item.fields?.bpoints || '');
-            // Softr created date can be in various field names
-            const createdAt = String(item.fields?.['Created At'] || item.fields?.created_at || item.fields?.firstPublished || item.fields?.createdAt || item.created_at || '');
-            const theme = String(item.fields?.theme || 'news');
-            // Softr field names: 'links' for URLs, 'publisher' for sources
-            const links = item.fields?.links;
-            const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
-                       : typeof links === 'string' && links ? [links] : [];
-            const publisherField = item.fields?.publisher;
-            const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
-                           : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
-            const displaySource = formatSources(sources);
-
-            return (
-              <article
-                class="ni news-item"
-                data-cat={theme}
-                data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
-                data-urls={JSON.stringify(urls)}
-              >
-                <div class="ni-meta">
-                  <div class="ni-time">{formatNewsTime(createdAt)}</div>
-                  <div class="ni-src">{displaySource}</div>
-                </div>
-                <div class="ni-body">
-                  <h3>{title}</h3>
-                  <div class="ni-tags">
-                    <span class="ni-tag">{theme}</span>
+              return (
+                <article
+                  class="ni news-item"
+                  data-cat={filterCategory}
+                  data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
+                  data-urls={JSON.stringify(urls)}
+                >
+                  <div class="ni-meta">
+                    <div class="ni-time">{formatNewsTime(createdAt)}</div>
+                    <div class="ni-src">{displaySource}</div>
                   </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+                  <div class="ni-body">
+                    <h3>{title}</h3>
+                    <div class="ni-tags">
+                      <span class="ni-tag">{filterCategory}</span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          {/* Tokenization */}
+          {themedNews['tokenization']?.length > 0 && (
+            <div class="feed-group theme-feed hidden" id="feed-tokenization" data-theme="tokenization">
+              <div class="feed-group-label">Tokenization</div>
+              {themedNews['tokenization'].map((item) => {
+                const title = String(item.fields?.title || '');
+                const createdAt = String(item.fields?.['Created At'] || item.fields?.created_at || item.fields?.firstPublished || item.fields?.createdAt || item.created_at || '');
+                const links = item.fields?.links;
+                const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                           : typeof links === 'string' && links ? [links] : [];
+                const publisherField = item.fields?.publisher;
+                const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                               : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+                const displaySource = formatSources(sources);
+
+                return (
+                  <article
+                    class="ni news-item"
+                    data-cat="tokenization"
+                    data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
+                    data-urls={JSON.stringify(urls)}
+                  >
+                    <div class="ni-meta">
+                      <div class="ni-time">{formatNewsTime(createdAt)}</div>
+                      <div class="ni-src">{displaySource}</div>
+                    </div>
+                    <div class="ni-body">
+                      <h3>{title}</h3>
+                      <div class="ni-tags">
+                        <span class="ni-tag">tokenization</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Stablecoins */}
+          {themedNews['stablecoins']?.length > 0 && (
+            <div class="feed-group theme-feed hidden" id="feed-stablecoins" data-theme="stablecoins">
+              <div class="feed-group-label">Stablecoins</div>
+              {themedNews['stablecoins'].map((item) => {
+                const title = String(item.fields?.title || '');
+                const createdAt = String(item.fields?.['Created At'] || item.fields?.created_at || item.fields?.firstPublished || item.fields?.createdAt || item.created_at || '');
+                const links = item.fields?.links;
+                const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                           : typeof links === 'string' && links ? [links] : [];
+                const publisherField = item.fields?.publisher;
+                const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                               : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+                const displaySource = formatSources(sources);
+
+                return (
+                  <article
+                    class="ni news-item"
+                    data-cat="stablecoins"
+                    data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
+                    data-urls={JSON.stringify(urls)}
+                  >
+                    <div class="ni-meta">
+                      <div class="ni-time">{formatNewsTime(createdAt)}</div>
+                      <div class="ni-src">{displaySource}</div>
+                    </div>
+                    <div class="ni-body">
+                      <h3>{title}</h3>
+                      <div class="ni-tags">
+                        <span class="ni-tag">stablecoins</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Regulation */}
+          {themedNews['regulation']?.length > 0 && (
+            <div class="feed-group theme-feed hidden" id="feed-regulation-policy" data-theme="regulation-policy">
+              <div class="feed-group-label">Regulation and Policy</div>
+              {themedNews['regulation'].map((item) => {
+                const title = String(item.fields?.title || '');
+                const createdAt = String(item.fields?.['Created At'] || item.fields?.created_at || item.fields?.firstPublished || item.fields?.createdAt || item.created_at || '');
+                const links = item.fields?.links;
+                const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                           : typeof links === 'string' && links ? [links] : [];
+                const publisherField = item.fields?.publisher;
+                const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                               : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+                const displaySource = formatSources(sources);
+
+                return (
+                  <article
+                    class="ni news-item"
+                    data-cat="regulation-policy"
+                    data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
+                    data-urls={JSON.stringify(urls)}
+                  >
+                    <div class="ni-meta">
+                      <div class="ni-time">{formatNewsTime(createdAt)}</div>
+                      <div class="ni-src">{displaySource}</div>
+                    </div>
+                    <div class="ni-body">
+                      <h3>{title}</h3>
+                      <div class="ni-tags">
+                        <span class="ni-tag">regulation-policy</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Market Structure */}
+          {themedNews['market-structure']?.length > 0 && (
+            <div class="feed-group theme-feed hidden" id="feed-market-structure" data-theme="market-structure">
+              <div class="feed-group-label">Market Structure</div>
+              {themedNews['market-structure'].map((item) => {
+                const title = String(item.fields?.title || '');
+                const createdAt = String(item.fields?.['Created At'] || item.fields?.created_at || item.fields?.firstPublished || item.fields?.createdAt || item.created_at || '');
+                const links = item.fields?.links;
+                const urls = Array.isArray(links) ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                           : typeof links === 'string' && links ? [links] : [];
+                const publisherField = item.fields?.publisher;
+                const sources = Array.isArray(publisherField) ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                               : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+                const displaySource = formatSources(sources);
+
+                return (
+                  <article
+                    class="ni news-item"
+                    data-cat="market-structure"
+                    data-sources={JSON.stringify(sources.length ? sources : [displaySource])}
+                    data-urls={JSON.stringify(urls)}
+                  >
+                    <div class="ni-meta">
+                      <div class="ni-time">{formatNewsTime(createdAt)}</div>
+                      <div class="ni-src">{displaySource}</div>
+                    </div>
+                    <div class="ni-body">
+                      <h3>{title}</h3>
+                      <div class="ni-tags">
+                        <span class="ni-tag">market-structure</span>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </>
       ) : (
         <div class="feed-group">
           <div class="feed-group-label">No News</div>
@@ -1064,56 +1250,78 @@ document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
 </script>
 
 <script>
-  // ═══ Search Functionality ═══
+  // ═══ Search and Tag Filter Functionality ═══
   document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.querySelector('.search-wrap input[type="text"]');
-    const newsItems = document.querySelectorAll('.feed .news-item');
-    const featuredItems = document.querySelectorAll('.featured-scroll .news-item');
+    const tagButtons = document.querySelectorAll('.tag-filter');
+    const themeFeeds = document.querySelectorAll('.theme-feed');
 
     if (!searchInput) return;
 
-    const feedGroup = document.querySelector('.feed .feed-group');
-    let noResultsMsg = feedGroup?.querySelector('.no-results-message');
-    if (!noResultsMsg && feedGroup) {
-      noResultsMsg = document.createElement('div');
-      noResultsMsg.className = 'no-results-message hidden';
-      noResultsMsg.textContent = 'No news found matching your search.';
-      feedGroup.appendChild(noResultsMsg);
+    let currentFilter = 'all';
+    let currentQuery = '';
+
+    function showFeed(filter) {
+      // Hide all feeds
+      themeFeeds.forEach(feed => {
+        feed.classList.add('hidden');
+      });
+
+      // Show selected feed
+      const targetFeed = document.getElementById('feed-' + filter);
+      if (targetFeed) {
+        targetFeed.classList.remove('hidden');
+      }
+
+      // Apply search filter to visible feed
+      applySearchFilter();
     }
 
-    searchInput.addEventListener('input', function(e) {
-      const query = e.target.value.toLowerCase().trim();
+    function applySearchFilter() {
+      const visibleFeed = document.querySelector('.theme-feed:not(.hidden)');
+      if (!visibleFeed) return;
+
+      const newsItems = visibleFeed.querySelectorAll('.news-item');
       let visibleCount = 0;
 
-      // Filter main news feed
       newsItems.forEach(item => {
         const title = item.querySelector('h3')?.textContent?.toLowerCase() || '';
-        const bpoints = item.querySelector('p')?.textContent?.toLowerCase() || '';
         const source = item.querySelector('.ni-src')?.textContent?.toLowerCase() || '';
         const theme = item.getAttribute('data-cat')?.toLowerCase() || '';
 
-        const matches = title.includes(query) ||
-                       bpoints.includes(query) ||
-                       source.includes(query) ||
-                       theme.includes(query);
+        const matches = !currentQuery ||
+                       title.includes(currentQuery) ||
+                       source.includes(currentQuery) ||
+                       theme.includes(currentQuery);
 
         item.style.display = matches ? '' : 'none';
         if (matches) visibleCount++;
       });
+    }
 
-      // Filter featured news
-      featuredItems.forEach(item => {
-        const title = item.querySelector('.fc-title')?.textContent?.toLowerCase() || '';
-        const source = item.querySelector('.fc-source')?.textContent?.toLowerCase() || '';
-
-        const matches = title.includes(query) || source.includes(query);
-        item.style.display = matches ? '' : 'none';
-      });
-
-      // Show/hide no results message
-      if (noResultsMsg) {
-        noResultsMsg.classList.toggle('hidden', visibleCount > 0 || !query);
+    // Search input handler
+    searchInput.addEventListener('input', function(e) {
+      const target = e.target;
+      if (target instanceof HTMLInputElement) {
+        currentQuery = target.value.toLowerCase().trim();
+        applySearchFilter();
       }
+    });
+
+    // Tag filter handlers
+    tagButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        // Update active state
+        tagButtons.forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+
+        // Get filter value
+        const btn = button;
+        currentFilter = btn.dataset.filter || 'all';
+
+        // Show appropriate feed
+        showFeed(currentFilter);
+      });
     });
   });
 </script>
