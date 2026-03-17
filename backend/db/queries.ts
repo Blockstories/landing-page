@@ -1,8 +1,8 @@
 import { db } from "./client.js";
-import type { Article, Person, ArticleRole } from "./types.js";
-import { mapRowToArticle, mapRowToPerson, combineArticleWithPeople } from "./mappers.js";
+import type { Article, Person, ArticleRole, Report, ReportRole } from "./types.js";
+import { mapRowToArticle, mapRowToPerson, combineArticleWithPeople, mapRowToReport, combineReportWithPeople } from "./mappers.js";
 
-export type { Article, Person, ArticleRole };
+export type { Article, Person, ArticleRole, Report, ReportRole };
 
 // ============================================================================
 // Simple in-memory cache to reduce DB hits and cold start penalties
@@ -221,7 +221,7 @@ export async function getArticlesByTags(
     LIMIT ?`;
 
     const idResult = await db.execute(idQuery, [...tags, count]);
-    const articleIds = idResult.rows.map((row: { id: number }) => row.id);
+    const articleIds = idResult.rows.map((row) => row.id as number);
 
     if (articleIds.length === 0) {
       return [];
@@ -254,7 +254,7 @@ export async function getArticlesByTags(
     LIMIT ?`;
 
     const idResult = await db.execute(idQuery, [count]);
-    const articleIds = idResult.rows.map((row: { id: number }) => row.id);
+    const articleIds = idResult.rows.map((row) => row.id as number);
 
     if (articleIds.length === 0) {
       return [];
@@ -664,8 +664,8 @@ export interface ArticlesByPublicationResult {
 
 /**
  * Get articles by publication with cursor-based pagination
- * Uses a single JOIN query to avoid N+1 problem
- * Results are cached for 60 seconds to reduce DB hits
+ * Uses two-step query to avoid LIMIT issues with JOINs
+ * Results are cached for performance
  */
 export async function getArticlesByPublication(
   publicationId: string,
@@ -682,9 +682,39 @@ export async function getArticlesByPublication(
     if (cached) return cached;
   }
 
-  // Build query with optional cursor filter and JOIN for people and tags
-  // Excludes articles tagged as "duplicate"
-  let query = `SELECT
+  // Step 1: Get distinct article IDs with proper ordering and LIMIT
+  // This avoids LIMIT cutting off people/tags due to JOIN expansion
+  let idQuery = `SELECT id, publish_date
+  FROM articles
+  WHERE beehiiv_publication_id = ?
+    AND NOT EXISTS (
+      SELECT 1 FROM article_tags at2
+      WHERE at2.article_id = articles.id AND at2.tag = 'duplicate'
+    )`;
+  const idParams: (string | number)[] = [publicationId];
+
+  if (cursor) {
+    idQuery += ` AND (publish_date < ? OR (publish_date = ? AND id < ?))`;
+    idParams.push(cursor.ts, cursor.ts, cursor.id);
+  }
+
+  idQuery += ` ORDER BY publish_date DESC, id DESC LIMIT ?`;
+  idParams.push(limit + 1);
+
+  const idResult = await db.execute(idQuery, idParams);
+  const articleIds = idResult.rows.map((row) => row.id as number);
+
+  if (articleIds.length === 0) {
+    return { articles: [], hasMore: false };
+  }
+
+  // Check if there are more results
+  const hasMore = articleIds.length > limit;
+  const limitedIds = hasMore ? articleIds.slice(0, limit) : articleIds;
+
+  // Step 2: Fetch full article data with people and tags for these IDs
+  const idPlaceholders = limitedIds.map(() => "?").join(", ");
+  const query = `SELECT
     a.*,
     p.id as person_id, p.name, p.slug, p.image_url, p.company,
     ap.role,
@@ -693,28 +723,11 @@ export async function getArticlesByPublication(
   LEFT JOIN article_people ap ON a.id = ap.article_id
   LEFT JOIN people p ON ap.person_id = p.id
   LEFT JOIN article_tags at ON a.id = at.article_id
-  WHERE a.beehiiv_publication_id = ?
-    AND NOT EXISTS (
-      SELECT 1 FROM article_tags at2
-      WHERE at2.article_id = a.id AND at2.tag = 'duplicate'
-    )`;
-  const params: (string | number)[] = [publicationId];
+  WHERE a.id IN (${idPlaceholders})
+  ORDER BY a.publish_date DESC, a.id DESC`;
 
-  if (cursor) {
-    query += ` AND (a.publish_date < ? OR (a.publish_date = ? AND a.id < ?))`;
-    params.push(cursor.ts, cursor.ts, cursor.id);
-  }
-
-  // Order by publish_date DESC, then id DESC for stable pagination
-  // Fetch one extra to determine if there are more results
-  query += ` ORDER BY a.publish_date DESC, a.id DESC LIMIT ?`;
-  params.push(limit + 1);
-
-  const result = await db.execute(query, params);
+  const result = await db.execute(query, limitedIds);
   const rows = result.rows;
-
-  // Check if there are more results
-  const hasMore = rows.length > limit;
 
   // Group rows by article and collect people and tags
   const articleMap = new Map<number, { article: Omit<Article, "authors" | "featured" | "tags">; people: Array<{ person: Person; role: ArticleRole }>; tags: Set<string> }>();
@@ -753,12 +766,8 @@ export async function getArticlesByPublication(
     }
   }
 
-  // Remove the extra row if we fetched one
-  const articleEntries = Array.from(articleMap.values());
-  const limitedEntries = hasMore ? articleEntries.slice(0, limit) : articleEntries;
-
   // Convert to final articles with tags
-  const articlesWithPeople = limitedEntries.map(({ article, people, tags }) =>
+  const articlesWithPeople = Array.from(articleMap.values()).map(({ article, people, tags }) =>
     combineArticleWithPeople({ ...article, tags: Array.from(tags) }, people)
   );
 
@@ -784,4 +793,426 @@ export async function getArticlesByPublication(
   }
 
   return returnResult;
+}
+
+// ============================================================================
+// REPORT QUERIES (similar to article queries)
+// ============================================================================
+
+/**
+ * Fetch people for a report
+ */
+async function getPeopleForReport(reportId: number): Promise<Array<{ person: Person; role: ReportRole }>> {
+  const result = await db.execute(
+    `SELECT p.id, p.name, p.slug, p.image_url, p.company, rp.role
+     FROM people p
+     JOIN report_people rp ON p.id = rp.person_id
+     WHERE rp.report_id = ?`,
+    [reportId]
+  );
+
+  return result.rows.map((row) => ({
+    person: mapRowToPerson(row),
+    role: row.role as ReportRole,
+  }));
+}
+
+/**
+ * Get newest reports with their people
+ * Uses a single JOIN query to avoid N+1 problem
+ * @param count - Number of reports to fetch (default: 10)
+ * @param offset - Number of reports to skip for pagination (default: 0)
+ */
+export async function getNewestReports(count: number = 10, offset: number = 0): Promise<Report[]> {
+  const cacheKey = offset === 0 ? getCacheKey("reports", "newest", count) : null;
+
+  if (cacheKey) {
+    const cached = getCached<Report[]>(cacheKey);
+    if (cached) return cached;
+  }
+
+  const result = await db.execute(
+    `SELECT
+       r.*,
+       p.id as person_id, p.name, p.slug, p.image_url, p.company,
+       rp.role,
+       rt.tag
+     FROM reports r
+     LEFT JOIN report_people rp ON r.id = rp.report_id
+     LEFT JOIN people p ON rp.person_id = p.id
+     LEFT JOIN report_tags rt ON r.id = rt.report_id
+     ORDER BY r.publish_date DESC, r.id DESC
+     LIMIT ? OFFSET ?`,
+    [count, offset]
+  );
+
+  const reportMap = new Map<number, { report: Omit<Report, "authors" | "featured" | "tags">; people: Array<{ person: Person; role: ReportRole }>; tags: Set<string> }>();
+
+  for (const row of result.rows) {
+    const reportId = row.id as number;
+
+    if (!reportMap.has(reportId)) {
+      reportMap.set(reportId, {
+        report: mapRowToReport({ ...row, tags: [] }),
+        people: [],
+        tags: new Set()
+      });
+    }
+
+    const entry = reportMap.get(reportId)!;
+
+    if (row.person_id) {
+      entry.people.push({
+        person: mapRowToPerson({
+          id: row.person_id,
+          name: row.name,
+          slug: row.slug,
+          image_url: row.image_url,
+          company: row.company
+        }),
+        role: row.role as ReportRole
+      });
+    }
+
+    const tag = row.tag as string | undefined;
+    if (tag) {
+      entry.tags.add(tag);
+    }
+  }
+
+  const reports = Array.from(reportMap.values()).map(({ report, people, tags }) =>
+    combineReportWithPeople({ ...report, tags: Array.from(tags) }, people)
+  );
+
+  if (cacheKey) {
+    setCached(cacheKey, reports);
+  }
+
+  return reports;
+}
+
+/**
+ * Get reports by tags with their people
+ * Uses the report_tags junction table with proper indexes for fast lookups
+ * @param count - Number of reports to fetch (default: 10)
+ * @param tags - Optional array of tags to filter by (OR logic: reports matching ANY tag are returned)
+ */
+export async function getReportsByTags(
+  count: number = 10,
+  tags?: string[]
+): Promise<Report[]> {
+  const cacheKey = getCacheKey("reports", "tags", count, tags?.length ? JSON.stringify([...tags].sort()) : "all");
+
+  const cached = getCached<Report[]>(cacheKey);
+  if (cached) return cached;
+
+  let result;
+
+  if (tags && tags.length > 0) {
+    const tagPlaceholders = tags.map(() => "?").join(", ");
+    const idQuery = `SELECT DISTINCT r.id
+    FROM reports r
+    INNER JOIN report_tags rt ON r.id = rt.report_id
+    WHERE rt.tag IN (${tagPlaceholders})
+    ORDER BY r.publish_date DESC, r.id DESC
+    LIMIT ?`;
+
+    const idResult = await db.execute(idQuery, [...tags, count]);
+    const reportIds = idResult.rows.map((row) => row.id as number);
+
+    if (reportIds.length === 0) {
+      return [];
+    }
+
+    const idPlaceholders = reportIds.map(() => "?").join(", ");
+    const query = `SELECT
+      r.*,
+      p.id as person_id, p.name, p.slug, p.image_url, p.company,
+      rp.role
+    FROM reports r
+    LEFT JOIN report_people rp ON r.id = rp.report_id
+    LEFT JOIN people p ON rp.person_id = p.id
+    WHERE r.id IN (${idPlaceholders})
+    ORDER BY r.publish_date DESC, r.id DESC`;
+
+    result = await db.execute(query, reportIds);
+  } else {
+    const idQuery = `SELECT id FROM reports
+    ORDER BY publish_date DESC, id DESC
+    LIMIT ?`;
+
+    const idResult = await db.execute(idQuery, [count]);
+    const reportIds = idResult.rows.map((row) => row.id as number);
+
+    if (reportIds.length === 0) {
+      return [];
+    }
+
+    const idPlaceholders = reportIds.map(() => "?").join(", ");
+    const query = `SELECT
+      r.*,
+      p.id as person_id, p.name, p.slug, p.image_url, p.company,
+      rp.role
+    FROM reports r
+    LEFT JOIN report_people rp ON r.id = rp.report_id
+    LEFT JOIN people p ON rp.person_id = p.id
+    WHERE r.id IN (${idPlaceholders})
+    ORDER BY r.publish_date DESC, r.id DESC`;
+
+    result = await db.execute(query, reportIds);
+  }
+
+  const reportMap = new Map<number, { report: Omit<Report, "authors" | "featured">; people: Array<{ person: Person; role: ReportRole }> }>();
+
+  for (const row of result.rows) {
+    const reportId = row.id as number;
+
+    if (!reportMap.has(reportId)) {
+      reportMap.set(reportId, {
+        report: mapRowToReport(row),
+        people: []
+      });
+    }
+
+    if (row.person_id) {
+      const entry = reportMap.get(reportId)!;
+      entry.people.push({
+        person: mapRowToPerson({
+          id: row.person_id,
+          name: row.name,
+          slug: row.slug,
+          image_url: row.image_url,
+          company: row.company
+        }),
+        role: row.role as ReportRole
+      });
+    }
+  }
+
+  const reports = Array.from(reportMap.values()).map(({ report, people }) =>
+    combineReportWithPeople(report, people)
+  );
+
+  setCached(cacheKey, reports);
+
+  return reports;
+}
+
+/**
+ * Get single report by ID
+ * Fetches tags via JOIN with report_tags table
+ */
+export async function getReportById(id: number): Promise<Report | null> {
+  const result = await db.execute(
+    `SELECT
+      r.*,
+      rt.tag
+    FROM reports r
+    LEFT JOIN report_tags rt ON r.id = rt.report_id
+    WHERE r.id = ?`,
+    [id]
+  );
+
+  if (result.rows.length === 0) return null;
+
+  const tags = new Set<string>();
+  for (const row of result.rows) {
+    const tag = row.tag as string | undefined;
+    if (tag) tags.add(tag);
+  }
+
+  const firstRow = result.rows[0];
+  const report = mapRowToReport({ ...firstRow, tags: Array.from(tags) });
+
+  const people = await getPeopleForReport(report.id);
+  return combineReportWithPeople(report, people);
+}
+
+/**
+ * Create a new report with people relations
+ */
+export async function createReport(
+  report: Omit<Report, "id">,
+  people: Array<{ personId: number; role: ReportRole }> = []
+): Promise<Report> {
+  await db.execute(
+    `INSERT INTO reports
+      (title, subtitle, publish_date, web_url, thumbnail_url, summary, short_summary, content)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      report.title,
+      report.subtitle ?? null,
+      report.publishDate,
+      report.webUrl ?? null,
+      report.thumbnailUrl ?? null,
+      report.summary ?? null,
+      report.shortSummary ?? null,
+      report.content ?? null,
+    ]
+  );
+
+  const result = await db.execute(
+    "SELECT id FROM reports WHERE title = ? AND publish_date = ? ORDER BY id DESC LIMIT 1",
+    [report.title, report.publishDate]
+  );
+
+  const row = result.rows[0];
+  if (!row) throw new Error("Failed to retrieve newly inserted report");
+  const reportId = row.id as number;
+
+  if (report.tags.length > 0) {
+    for (const tag of report.tags) {
+      await db.execute(
+        "INSERT OR IGNORE INTO report_tags (report_id, tag) VALUES (?, ?)",
+        [reportId, tag]
+      );
+    }
+  }
+
+  if (people.length > 0) {
+    for (const { personId, role } of people) {
+      await db.execute(
+        "INSERT INTO report_people (report_id, person_id, role) VALUES (?, ?, ?)",
+        [reportId, personId, role]
+      );
+    }
+  }
+
+  return getReportById(reportId) as Promise<Report>;
+}
+
+/**
+ * Update report content
+ */
+export async function updateReportContent(
+  reportId: number,
+  content: string
+): Promise<void> {
+  await db.execute(
+    "UPDATE reports SET content = ? WHERE id = ?",
+    [content, reportId]
+  );
+}
+
+/**
+ * Update report summary
+ */
+export async function updateReportSummary(
+  reportId: number,
+  summary: string
+): Promise<void> {
+  await db.execute(
+    "UPDATE reports SET summary = ? WHERE id = ?",
+    [summary, reportId]
+  );
+}
+
+/**
+ * Update report short summary
+ */
+export async function updateReportShortSummary(
+  reportId: number,
+  shortSummary: string
+): Promise<void> {
+  await db.execute(
+    "UPDATE reports SET short_summary = ? WHERE id = ?",
+    [shortSummary, reportId]
+  );
+}
+
+/**
+ * Add person to report
+ */
+export async function addPersonToReport(
+  reportId: number,
+  personId: number,
+  role: ReportRole
+): Promise<void> {
+  await db.execute(
+    "INSERT OR IGNORE INTO report_people (report_id, person_id, role) VALUES (?, ?, ?)",
+    [reportId, personId, role]
+  );
+}
+
+/**
+ * Remove person from report
+ */
+export async function removePersonFromReport(
+  reportId: number,
+  personId: number,
+  role: ReportRole
+): Promise<void> {
+  await db.execute(
+    "DELETE FROM report_people WHERE report_id = ? AND person_id = ? AND role = ?",
+    [reportId, personId, role]
+  );
+}
+
+/**
+ * Get reports by person (as author or featured)
+ * Fetches tags via JOIN with report_tags table
+ */
+export async function getReportsByPerson(
+  personId: number,
+  role?: ReportRole
+): Promise<Report[]> {
+  let query = `SELECT
+      r.*,
+      rt.tag
+    FROM reports r
+    JOIN report_people rp ON r.id = rp.report_id
+    LEFT JOIN report_tags rt ON r.id = rt.report_id
+    WHERE rp.person_id = ?`;
+  const params: (number | string)[] = [personId];
+
+  if (role) {
+    query += " AND rp.role = ?";
+    params.push(role);
+  }
+
+  query += " ORDER BY r.publish_date DESC";
+
+  const result = await db.execute(query, params);
+
+  const reportMap = new Map<number, { report: Omit<Report, "authors" | "featured" | "tags">; tags: Set<string> }>();
+
+  for (const row of result.rows) {
+    const reportId = row.id as number;
+
+    if (!reportMap.has(reportId)) {
+      reportMap.set(reportId, {
+        report: mapRowToReport({ ...row, tags: [] }),
+        tags: new Set()
+      });
+    }
+
+    const tag = row.tag as string | undefined;
+    if (tag) {
+      reportMap.get(reportId)!.tags.add(tag);
+    }
+  }
+
+  const reports = Array.from(reportMap.values()).map(({ report, tags }) => ({
+    ...report,
+    tags: Array.from(tags)
+  }));
+
+  const reportsWithPeople = await Promise.all(
+    reports.map(async (report) => {
+      const people = await getPeopleForReport(report.id);
+      return combineReportWithPeople(report, people);
+    })
+  );
+
+  return reportsWithPeople;
+}
+
+/**
+ * Delete a report by ID
+ */
+export async function deleteReport(reportId: number): Promise<void> {
+  await db.execute(
+    "DELETE FROM reports WHERE id = ?",
+    [reportId]
+  );
 }

@@ -1,5 +1,5 @@
 import type { Row } from "@libsql/client";
-import type { Article, Person, ArticleRole } from "./types.js";
+import type { Article, Person, ArticleRole, Report, ReportRole } from "./types.js";
 
 // Flexible row type that accepts both full Row objects and partial row data
 export type RowLike = Row | Record<string, unknown>;
@@ -62,6 +62,47 @@ export function combineArticleWithPeople(
 ): Article {
   return {
     ...article,
+    authors: people.filter((p) => p.role === "author").map((p) => p.person),
+    featured: people.filter((p) => p.role === "featured").map((p) => p.person),
+  };
+}
+
+/**
+ * Map database row to Report object (without people - attach separately)
+ * Tags should be provided as string[] in row.tags (not JSON string)
+ */
+export function mapRowToReport(row: RowLike): Omit<Report, "authors" | "featured"> {
+  // Handle tags: can be string[] (from JOIN) or null
+  const tags: string[] = [];
+  if (row.tags) {
+    if (Array.isArray(row.tags)) {
+      tags.push(...row.tags as string[]);
+    }
+  }
+
+  return {
+    id: row.id as number,
+    title: row.title as string,
+    subtitle: row.subtitle as string | undefined ?? undefined,
+    publishDate: row.publish_date as number,
+    tags,
+    thumbnailUrl: row.thumbnail_url as string | undefined ?? undefined,
+    webUrl: row.web_url as string | undefined ?? undefined,
+    summary: row.summary as string | undefined ?? undefined,
+    shortSummary: row.short_summary as string | undefined ?? undefined,
+    content: row.content as string | undefined ?? undefined,
+  };
+}
+
+/**
+ * Combine report data with authors and featured people
+ */
+export function combineReportWithPeople(
+  report: Omit<Report, "authors" | "featured">,
+  people: Array<{ person: Person; role: ReportRole }>
+): Report {
+  return {
+    ...report,
     authors: people.filter((p) => p.role === "author").map((p) => p.person),
     featured: people.filter((p) => p.role === "featured").map((p) => p.person),
   };
