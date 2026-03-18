@@ -7,9 +7,9 @@ import { db } from "../db/client.js";
 import { updateArticleSummary, updateArticleShortSummary } from "../db/queries.js";
 import { summarizeArticle, generateShortSummary } from "../services/openaiService.js";
 
-async function getArticlesWithoutSummaries(limit: number = 20): Promise<Array<{ id: number; title: string; content?: string }>> {
+async function getLatestArticles(limit: number = 20): Promise<Array<{ id: number; title: string; content?: string }>> {
   const result = await db.execute(
-    `SELECT id, title, content FROM articles WHERE summary IS NULL OR summary = '' ORDER BY publish_date DESC LIMIT ?`,
+    `SELECT id, title, content FROM articles ORDER BY publish_date DESC LIMIT ?`,
     [limit]
   );
   return result.rows.map(row => ({
@@ -19,17 +19,24 @@ async function getArticlesWithoutSummaries(limit: number = 20): Promise<Array<{ 
   }));
 }
 
-async function backfillSummaries() {
-  console.log("Fetching latest 20 articles without summaries...\n");
+async function clearArticleSummaries(articleId: number): Promise<void> {
+  await db.execute(
+    `UPDATE articles SET summary = NULL, short_summary = NULL WHERE id = ?`,
+    [articleId]
+  );
+}
 
-  const articles = await getArticlesWithoutSummaries(20);
+async function backfillSummaries() {
+  console.log("Fetching latest 20 articles to regenerate summaries...\n");
+
+  const articles = await getLatestArticles(20);
 
   if (articles.length === 0) {
     console.log("No articles need summaries. All caught up!");
     return;
   }
 
-  console.log(`Found ${articles.length} articles without summaries\n`);
+  console.log(`Found ${articles.length} articles to process\n`);
 
   let successCount = 0;
   let errorCount = 0;
@@ -45,6 +52,10 @@ async function backfillSummaries() {
     }
 
     try {
+      // Clear existing summaries first
+      console.log(`  🗑️  Clearing existing summaries...`);
+      await clearArticleSummaries(article.id);
+
       // Generate full summary
       console.log(`  📝 Generating summary...`);
       const summary = await summarizeArticle(article.content);

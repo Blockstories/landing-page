@@ -1,85 +1,52 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import type { Report, Person, Article } from '../types/content.js';
+import { getNewestReports, getArticlesByTags, getPeopleByIds } from '../../../backend/db/queries.ts';
 
-// Fetch reports, team, and interviews from API during SSR
+// Fetch reports, team, and interviews directly from DB during SSR
 let reports: Report[] = [];
 let team: Person[] = [];
 let interviewArticles: Article[] = [];
 let briefingArticles: Article[] = [];
 
-// Get the current URL for making relative API requests
-const siteUrl = Astro.url.origin;
-
-// Fetch reports
+// Fetch reports directly from DB
 try {
-  const apiUrl = `${siteUrl}/api/reports?limit=6`;
-  console.log(`[briefings.astro] Fetching reports from: ${apiUrl}`);
-  const response = await fetch(apiUrl);
-  if (response.ok) {
-    const data = await response.json();
-    reports = data.reports || [];
-    console.log(`[briefings.astro] Loaded ${reports.length} reports`);
-  } else {
-    console.error("[briefings.astro] API returned error:", response.status, await response.text());
-  }
+  console.log(`[briefings.astro] Fetching reports from DB`);
+  reports = await getNewestReports(6);
+  console.log(`[briefings.astro] Loaded ${reports.length} reports`);
 } catch (error) {
-  console.error("[briefings.astro] Failed to fetch reports from API:", error);
+  console.error("[briefings.astro] Failed to fetch reports from DB:", error);
 }
 
-// Fetch interview articles
+// Fetch interview articles directly from DB
 try {
-  const articlesUrl = `${siteUrl}/api/articles?tags=interview&limit=3`;
-  console.log(`[briefings.astro] Fetching interviews from: ${articlesUrl}`);
-  const response = await fetch(articlesUrl);
-  if (response.ok) {
-    const data = await response.json();
-    interviewArticles = data.articles || [];
-    console.log(`[briefings.astro] Loaded ${interviewArticles.length} interview articles`);
-  } else {
-    console.error("[briefings.astro] Articles API returned error:", response.status, await response.text());
-  }
+  console.log(`[briefings.astro] Fetching interviews from DB`);
+  interviewArticles = await getArticlesByTags(3, ['interview']);
+  console.log(`[briefings.astro] Loaded ${interviewArticles.length} interview articles`);
 } catch (error) {
-  console.error("[briefings.astro] Failed to fetch interview articles from API:", error);
+  console.error("[briefings.astro] Failed to fetch interview articles from DB:", error);
 }
 
-// Fetch briefing articles (get newest, then filter for weekly briefings)
+// Fetch briefing articles directly from DB
 const CRYPTO_PUB_ID = "pub_01715eca-8680-4c80-8348-b34552fe2aaf";
 const INSTITUTIONAL_PUB_ID = "pub_ea97d244-f74b-49b3-a7c0-17f14829e241";
 
 try {
-  const briefingsUrl = `${siteUrl}/api/articles?limit=40`;
-  console.log(`[briefings.astro] Fetching briefings from: ${briefingsUrl}`);
-  const response = await fetch(briefingsUrl);
-  if (response.ok) {
-    const data = await response.json();
-    const allArticles = data.articles || [];
-    // Filter to only include articles with "weekly briefing" tag
-    briefingArticles = allArticles
-      .filter((a: Article) => a.tags.includes("weekly briefing"))
-      .slice(0, 6);
-    console.log(`[briefings.astro] Loaded ${briefingArticles.length} briefing articles`);
-  } else {
-    console.error("[briefings.astro] Briefings API returned error:", response.status, await response.text());
-  }
+  console.log(`[briefings.astro] Fetching briefings from DB`);
+  const allArticles = await getArticlesByTags(40, ['weekly briefing']);
+  briefingArticles = allArticles.slice(0, 6);
+  console.log(`[briefings.astro] Loaded ${briefingArticles.length} briefing articles`);
 } catch (error) {
-  console.error("[briefings.astro] Failed to fetch briefing articles from API:", error);
+  console.error("[briefings.astro] Failed to fetch briefing articles from DB:", error);
 }
 
-// Fetch team members (IDs: 2, 3, 1)
+// Fetch team members directly from DB (IDs: 2, 3, 1)
 try {
-  const peopleUrl = `${siteUrl}/api/people?ids=2,3,1`;
-  console.log(`[briefings.astro] Fetching team from: ${peopleUrl}`);
-  const response = await fetch(peopleUrl);
-  if (response.ok) {
-    const data = await response.json();
-    team = data.people || [];
-    console.log(`[briefings.astro] Loaded ${team.length} team members`);
-  } else {
-    console.error("[briefings.astro] People API returned error:", response.status, await response.text());
-  }
+  console.log(`[briefings.astro] Fetching team from DB`);
+  team = await getPeopleByIds([2, 3, 1]);
+  console.log(`[briefings.astro] Loaded ${team.length} team members`);
 } catch (error) {
-  console.error("[briefings.astro] Failed to fetch team from API:", error);
+  console.error("[briefings.astro] Failed to fetch team from DB:", error);
 }
 
 // Helper to format date
