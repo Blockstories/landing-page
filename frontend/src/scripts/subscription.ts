@@ -367,4 +367,25 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('subPopup')) {
     initSubscriptionPopup();
   }
+
+  // Handle nav subscribe button clicks
+  const navSubscribeBtns = document.querySelectorAll<HTMLButtonElement>('[data-open-subscribe]');
+  navSubscribeBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const popup = document.getElementById('subPopup');
+      const emailInput = document.getElementById('subEmail') as HTMLInputElement | null;
+      if (popup) {
+        popup.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        if (emailInput) {
+          emailInput.value = '';
+          emailInput.removeAttribute('readonly');
+          emailInput.style.background = '';
+          emailInput.style.color = '';
+          emailInput.focus();
+        }
+      }
+    });
+  });
 });
