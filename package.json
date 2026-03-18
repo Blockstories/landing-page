@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev --root frontend",
-    "build": "astro build --root frontend",
+    "build": "astro build --root frontend && mkdir -p .vercel && cp -r frontend/.vercel/output .vercel/",
     "preview": "astro preview --root frontend",
     "astro": "astro --root frontend",
     "test-beehiiv": "cd backend && tsx services/processBeehiivPost.ts",
