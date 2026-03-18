@@ -46,3 +46,14 @@ export interface Report {
   shortSummary?: string;
   content?: string;
 }
+
+export interface Event {
+  id: number;
+  title: string;
+  thumbnailUrl?: string;
+  webUrl?: string;
+  timeframeString?: string;
+  location?: string;
+  date: number;
+  tags: string[];
+}

@@ -1,8 +1,8 @@
 import { db } from "./client.js";
-import type { Article, Person, ArticleRole, Report, ReportRole } from "./types.js";
-import { mapRowToArticle, mapRowToPerson, combineArticleWithPeople, mapRowToReport, combineReportWithPeople } from "./mappers.js";
+import type { Article, Person, ArticleRole, Report, ReportRole, Event } from "./types.js";
+import { mapRowToArticle, mapRowToPerson, combineArticleWithPeople, mapRowToReport, combineReportWithPeople, mapRowToEvent } from "./mappers.js";
 
-export type { Article, Person, ArticleRole, Report, ReportRole };
+export type { Article, Person, ArticleRole, Report, ReportRole, Event };
 
 // ============================================================================
 // Simple in-memory cache to reduce DB hits and cold start penalties
@@ -1246,4 +1246,306 @@ export async function getPeopleByIds(ids: number[]): Promise<Person[]> {
 
   // Return in the order of requested IDs
   return ids.map(id => peopleMap.get(id)).filter((p): p is Person => p !== undefined);
+}
+
+// ============================================================================
+// EVENT QUERIES
+// ============================================================================
+
+/**
+ * Get newest events
+ * Results are cached for performance
+ * @param count - Number of events to fetch (default: 10)
+ * @param offset - Number of events to skip for pagination (default: 0)
+ */
+export async function getNewestEvents(count: number = 10, offset: number = 0): Promise<Event[]> {
+  const cacheKey = offset === 0 ? getCacheKey("events", "newest", count) : null;
+
+  if (cacheKey) {
+    const cached = getCached<Event[]>(cacheKey);
+    if (cached) return cached;
+  }
+
+  const result = await db.execute(
+    `SELECT
+       e.*,
+       et.tag
+     FROM events e
+     LEFT JOIN event_tags et ON e.id = et.event_id
+     ORDER BY e.date DESC, e.id DESC
+     LIMIT ? OFFSET ?`,
+    [count, offset]
+  );
+
+  const eventMap = new Map<number, { event: Omit<Event, "tags">; tags: Set<string> }>();
+
+  for (const row of result.rows) {
+    const eventId = row.id as number;
+
+    if (!eventMap.has(eventId)) {
+      eventMap.set(eventId, {
+        event: mapRowToEvent({ ...row, tags: [] }),
+        tags: new Set()
+      });
+    }
+
+    const tag = row.tag as string | undefined;
+    if (tag) {
+      eventMap.get(eventId)!.tags.add(tag);
+    }
+  }
+
+  const events = Array.from(eventMap.values()).map(({ event, tags }) =>
+    ({ ...event, tags: Array.from(tags) })
+  );
+
+  if (cacheKey) {
+    setCached(cacheKey, events);
+  }
+
+  return events;
+}
+
+/**
+ * Get events by tags
+ * Uses the event_tags junction table with proper indexes for fast lookups
+ * Results are cached for performance
+ * @param count - Number of events to fetch (default: 10)
+ * @param tags - Optional array of tags to filter by (OR logic: events matching ANY tag are returned)
+ */
+export async function getEventsByTags(
+  count: number = 10,
+  tags?: string[]
+): Promise<Event[]> {
+  const cacheKey = getCacheKey("events", "tags", count, tags?.length ? JSON.stringify([...tags].sort()) : "all");
+
+  const cached = getCached<Event[]>(cacheKey);
+  if (cached) return cached;
+
+  let result;
+
+  if (tags && tags.length > 0) {
+    const tagPlaceholders = tags.map(() => "?").join(", ");
+    const idQuery = `SELECT DISTINCT e.id
+    FROM events e
+    INNER JOIN event_tags et ON e.id = et.event_id
+    WHERE et.tag IN (${tagPlaceholders})
+    ORDER BY e.date DESC, e.id DESC
+    LIMIT ?`;
+
+    const idResult = await db.execute(idQuery, [...tags, count]);
+    const eventIds = idResult.rows.map((row) => row.id as number);
+
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    const idPlaceholders = eventIds.map(() => "?").join(", ");
+    const query = `SELECT
+      e.*,
+      et.tag
+    FROM events e
+    LEFT JOIN event_tags et ON e.id = et.event_id
+    WHERE e.id IN (${idPlaceholders})
+    ORDER BY e.date DESC, e.id DESC`;
+
+    result = await db.execute(query, eventIds);
+  } else {
+    const idQuery = `SELECT id FROM events
+    ORDER BY date DESC, id DESC
+    LIMIT ?`;
+
+    const idResult = await db.execute(idQuery, [count]);
+    const eventIds = idResult.rows.map((row) => row.id as number);
+
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    const idPlaceholders = eventIds.map(() => "?").join(", ");
+    const query = `SELECT
+      e.*,
+      et.tag
+    FROM events e
+    LEFT JOIN event_tags et ON e.id = et.event_id
+    WHERE e.id IN (${idPlaceholders})
+    ORDER BY e.date DESC, e.id DESC`;
+
+    result = await db.execute(query, eventIds);
+  }
+
+  const eventMap = new Map<number, { event: Omit<Event, "tags">; tags: Set<string> }>();
+
+  for (const row of result.rows) {
+    const eventId = row.id as number;
+
+    if (!eventMap.has(eventId)) {
+      eventMap.set(eventId, {
+        event: mapRowToEvent({ ...row, tags: [] }),
+        tags: new Set()
+      });
+    }
+
+    const tag = row.tag as string | undefined;
+    if (tag) {
+      eventMap.get(eventId)!.tags.add(tag);
+    }
+  }
+
+  const events = Array.from(eventMap.values()).map(({ event, tags }) =>
+    ({ ...event, tags: Array.from(tags) })
+  );
+
+  setCached(cacheKey, events);
+
+  return events;
+}
+
+/**
+ * Get single event by ID
+ * Fetches tags via JOIN with event_tags table
+ */
+export async function getEventById(id: number): Promise<Event | null> {
+  const result = await db.execute(
+    `SELECT
+      e.*,
+      et.tag
+    FROM events e
+    LEFT JOIN event_tags et ON e.id = et.event_id
+    WHERE e.id = ?`,
+    [id]
+  );
+
+  if (result.rows.length === 0) return null;
+
+  const tags = new Set<string>();
+  for (const row of result.rows) {
+    const tag = row.tag as string | undefined;
+    if (tag) tags.add(tag);
+  }
+
+  const firstRow = result.rows[0];
+  return mapRowToEvent({ ...firstRow, tags: Array.from(tags) });
+}
+
+/**
+ * Create a new event
+ */
+export async function createEvent(
+  event: Omit<Event, "id">
+): Promise<Event> {
+  await db.execute(
+    `INSERT INTO events
+      (title, thumbnail_url, web_url, timeframe_string, location, date)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      event.title,
+      event.thumbnailUrl ?? null,
+      event.webUrl ?? null,
+      event.timeframeString ?? null,
+      event.location ?? null,
+      event.date,
+    ]
+  );
+
+  const result = await db.execute(
+    "SELECT id FROM events WHERE title = ? AND date = ? ORDER BY id DESC LIMIT 1",
+    [event.title, event.date]
+  );
+
+  const row = result.rows[0];
+  if (!row) throw new Error("Failed to retrieve newly inserted event");
+  const eventId = row.id as number;
+
+  if (event.tags.length > 0) {
+    for (const tag of event.tags) {
+      await db.execute(
+        "INSERT OR IGNORE INTO event_tags (event_id, tag) VALUES (?, ?)",
+        [eventId, tag]
+      );
+    }
+  }
+
+  return getEventById(eventId) as Promise<Event>;
+}
+
+/**
+ * Update event
+ */
+export async function updateEvent(
+  eventId: number,
+  updates: Partial<Omit<Event, "id" | "tags">>
+): Promise<void> {
+  const fields: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  if (updates.title !== undefined) {
+    fields.push("title = ?");
+    values.push(updates.title);
+  }
+  if (updates.thumbnailUrl !== undefined) {
+    fields.push("thumbnail_url = ?");
+    values.push(updates.thumbnailUrl ?? null);
+  }
+  if (updates.webUrl !== undefined) {
+    fields.push("web_url = ?");
+    values.push(updates.webUrl ?? null);
+  }
+  if (updates.timeframeString !== undefined) {
+    fields.push("timeframe_string = ?");
+    values.push(updates.timeframeString ?? null);
+  }
+  if (updates.location !== undefined) {
+    fields.push("location = ?");
+    values.push(updates.location ?? null);
+  }
+  if (updates.date !== undefined) {
+    fields.push("date = ?");
+    values.push(updates.date);
+  }
+
+  if (fields.length === 0) return;
+
+  values.push(eventId);
+
+  await db.execute(
+    `UPDATE events SET ${fields.join(", ")} WHERE id = ?`,
+    values
+  );
+}
+
+/**
+ * Delete an event by ID
+ */
+export async function deleteEvent(eventId: number): Promise<void> {
+  await db.execute(
+    "DELETE FROM events WHERE id = ?",
+    [eventId]
+  );
+}
+
+/**
+ * Add tag to event
+ */
+export async function addTagToEvent(
+  eventId: number,
+  tag: string
+): Promise<void> {
+  await db.execute(
+    "INSERT OR IGNORE INTO event_tags (event_id, tag) VALUES (?, ?)",
+    [eventId, tag]
+  );
+}
+
+/**
+ * Remove tag from event
+ */
+export async function removeTagFromEvent(
+  eventId: number,
+  tag: string
+): Promise<void> {
+  await db.execute(
+    "DELETE FROM event_tags WHERE event_id = ? AND tag = ?",
+    [eventId, tag]
+  );
 }

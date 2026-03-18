@@ -1,5 +1,5 @@
 import type { Row } from "@libsql/client";
-import type { Article, Person, ArticleRole, Report, ReportRole } from "./types.js";
+import type { Article, Person, ArticleRole, Report, ReportRole, Event } from "./types.js";
 
 // Flexible row type that accepts both full Row objects and partial row data
 export type RowLike = Row | Record<string, unknown>;
@@ -108,5 +108,30 @@ export function combineReportWithPeople(
     ...report,
     authors: people.filter((p) => p.role === "author").map((p) => p.person),
     featured: people.filter((p) => p.role === "featured").map((p) => p.person),
+  };
+}
+
+/**
+ * Map database row to Event object
+ * Tags should be provided as string[] in row.tags (not JSON string)
+ */
+export function mapRowToEvent(row: RowLike): Event {
+  // Handle tags: can be string[] (from JOIN) or null
+  const tags: string[] = [];
+  if (row.tags) {
+    if (Array.isArray(row.tags)) {
+      tags.push(...row.tags as string[]);
+    }
+  }
+
+  return {
+    id: row.id as number,
+    title: row.title as string,
+    thumbnailUrl: row.thumbnail_url as string | undefined ?? undefined,
+    webUrl: row.web_url as string | undefined ?? undefined,
+    timeframeString: row.timeframe_string as string | undefined ?? undefined,
+    location: row.location as string | undefined ?? undefined,
+    date: row.date as number,
+    tags,
   };
 }

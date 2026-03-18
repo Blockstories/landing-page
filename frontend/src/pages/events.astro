@@ -2,6 +2,61 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import type { Event } from '../../../backend/db/types.js';
+import { getNewestEvents } from '../../../backend/db/queries.js';
+
+// Fetch events directly from DB during SSR
+let events: Event[] = [];
+
+try {
+  console.log(`[events.astro] Fetching events from DB`);
+  events = await getNewestEvents(20);
+  console.log(`[events.astro] Loaded ${events.length} events`);
+} catch (error) {
+  console.error("[events.astro] Failed to fetch events from DB:", error);
+}
+
+// Helper to format date from timestamp
+function formatEventDate(dateTimestamp: number) {
+  const date = new Date(dateTimestamp * 1000);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return {
+    day: date.getDate().toString().padStart(2, '0'),
+    month: months[date.getMonth()],
+    monthKey: date.getMonth() + 1 // 1-12 for data-month
+  };
+}
+
+// Helper to get event type from tags
+function getEventType(tags: string[]): string {
+  const typeTags = ['summit', 'dinner', 'webinar', 'workshop'];
+  for (const tag of tags) {
+    const lowerTag = tag.toLowerCase();
+    if (typeTags.includes(lowerTag)) return lowerTag;
+  }
+  return 'summit'; // default
+}
+
+// Helper to get event series from tags
+function getEventSeries(tags: string[]): { name: string; class: string } {
+  const seriesTags = ['winter', 'summer', 'fall'];
+  for (const tag of tags) {
+    const lowerTag = tag.toLowerCase();
+    if (seriesTags.includes(lowerTag)) {
+      return {
+        name: lowerTag.charAt(0).toUpperCase() + lowerTag.slice(1) + ' Series',
+        class: lowerTag
+      };
+    }
+  }
+  return { name: 'Winter Series', class: 'winter' }; // default
+}
+
+// Helper to format timeframe string
+function formatTimeframe(timeframeString?: string): string {
+  if (!timeframeString) return '';
+  return timeframeString;
+}
 ---
 
 <Layout title="Events — Blockstories">
@@ -53,172 +108,52 @@ import Footer from '../components/Footer.astro';
     </div>
 
     <div class="events-list" id="eventsList">
-
-      <!-- ── FEBRUARY ── -->
-      <div class="ev-card bs" data-month="feb" data-type="webinar">
-        <div class="ev-date">
-          <div class="ev-day">19</div>
-          <div class="ev-month">Feb</div>
-        </div>
-        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
-        <div class="ev-body">
-          <div class="ev-badges">
-            <span class="ev-type">Webinar</span>
-            <span class="ev-series winter">Winter Series</span>
+      {events.map((event, index) => {
+        const date = formatEventDate(event.date);
+        const eventType = getEventType(event.tags);
+        const eventSeries = getEventSeries(event.tags);
+        return (
+          <div class="ev-card bs" data-month={date.month.toLowerCase()} data-type={eventType}>
+            <div class="ev-date">
+              <div class="ev-day">{date.day}</div>
+              <div class="ev-month">{date.month}</div>
+            </div>
+            <div class="ev-thumb">
+              {event.thumbnailUrl ? (
+                <img src={event.thumbnailUrl} alt={event.title} loading="lazy" />
+              ) : (
+                <svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg>
+              )}
+            </div>
+            <div class="ev-body">
+              <div class="ev-badges">
+                <span class="ev-type">{eventType.charAt(0).toUpperCase() + eventType.slice(1)}</span>
+                <span class={`ev-series ${eventSeries.class}`}>{eventSeries.name}</span>
+              </div>
+              <h3>{event.title}</h3>
+              <div class="ev-meta">
+                <span><span class="ev-meta-dot"></span>{event.location || 'Location TBA'}</span>
+                {event.timeframeString && <span>{event.timeframeString}</span>}
+              </div>
+            </div>
+            <div class="ev-action">
+              {event.webUrl ? (
+                <a href={event.webUrl} class="ev-btn" target="_blank" rel="noopener">Register</a>
+              ) : (
+                <button class="ev-btn">Register</button>
+              )}
+            </div>
           </div>
-          <h3>Vaults, ETFs &amp; Tokenized Funds</h3>
-          <div class="ev-meta">
-            <span><span class="ev-meta-dot"></span>Online</span>
-            <span>14:00 CET</span>
+        );
+      })}
+      {events.length === 0 && (
+        <div class="ev-card bs">
+          <div class="ev-body">
+            <h3>No upcoming events</h3>
+            <p class="ev-desc">Check back soon for our next events.</p>
           </div>
-          <p class="ev-desc">A structured comparison of institutional fund vehicles entering the digital asset space. How do vault structures, crypto ETFs, and tokenized money market funds differ in regulatory treatment, investor access, and operational risk?</p>
         </div>
-        <div class="ev-action">
-          <button class="ev-btn">Register</button>
-        </div>
-      </div>
-
-      <div class="ev-card bs" data-month="feb" data-type="summit">
-        <div class="ev-date">
-          <div class="ev-day">24</div>
-          <div class="ev-month">Feb</div>
-        </div>
-        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
-        <div class="ev-body">
-          <div class="ev-badges">
-            <span class="ev-type">Summit</span>
-            <span class="ev-series winter">Winter Series</span>
-          </div>
-          <h3>Horizon Series: Frankfurt</h3>
-          <div class="ev-meta">
-            <span><span class="ev-meta-dot"></span>Nextower, Frankfurt</span>
-            <span>09:00 &ndash; 18:00 CET</span>
-          </div>
-          <p class="ev-desc">The flagship Horizon Series summit returns to Frankfurt. Keynotes from heads of digital asset strategy at Deutsche Bank, Commerzbank, DZ Bank, and DekaBank. Institutional networking dinner included.</p>
-        </div>
-        <div class="ev-action">
-          <button class="ev-btn">Register</button>
-        </div>
-      </div>
-
-      <!-- ── MARCH ── -->
-      <div class="ev-card bs" data-month="mar" data-type="webinar">
-        <div class="ev-date">
-          <div class="ev-day">05</div>
-          <div class="ev-month">Mar</div>
-        </div>
-        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
-        <div class="ev-body">
-          <div class="ev-badges">
-            <span class="ev-type">Webinar</span>
-            <span class="ev-series summer">Summer Series</span>
-          </div>
-          <h3>Digital Assets Infrastructure</h3>
-          <div class="ev-meta">
-            <span><span class="ev-meta-dot"></span>Online</span>
-            <span>15:00 CET</span>
-          </div>
-          <p class="ev-desc">Custody, settlement, and post-trade infrastructure for institutional digital asset operations. Technical deep-dive into the infrastructure layer powering Europe's next generation of financial market infrastructure.</p>
-        </div>
-        <div class="ev-action">
-          <button class="ev-btn">Register</button>
-        </div>
-      </div>
-
-      <div class="ev-card bs" data-month="mar" data-type="dinner">
-        <div class="ev-date">
-          <div class="ev-day">10</div>
-          <div class="ev-month">Mar</div>
-        </div>
-        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
-        <div class="ev-body">
-          <div class="ev-badges">
-            <span class="ev-type">Dinner</span>
-            <span class="ev-series summer">Summer Series</span>
-          </div>
-          <h3>Horizon Series: Paris</h3>
-          <div class="ev-meta">
-            <span><span class="ev-meta-dot"></span>Paris</span>
-            <span>19:00 CET</span>
-          </div>
-          <p class="ev-desc">An intimate evening gathering for C-suite executives and heads of digital asset strategy from France's leading financial institutions. Keynote address followed by structured networking over dinner.</p>
-        </div>
-        <div class="ev-action">
-          <button class="ev-btn">Register</button>
-        </div>
-      </div>
-
-      <div class="ev-card bs" data-month="mar" data-type="summit">
-        <div class="ev-date">
-          <div class="ev-day">18</div>
-          <div class="ev-month">Mar</div>
-        </div>
-        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
-        <div class="ev-body">
-          <div class="ev-badges">
-            <span class="ev-type">Summit</span>
-            <span class="ev-series summer">Summer Series</span>
-          </div>
-          <h3>Horizon Series: Zurich</h3>
-          <div class="ev-meta">
-            <span><span class="ev-meta-dot"></span>Google HQ, Zurich</span>
-            <span>09:00 &ndash; 17:00 CET</span>
-          </div>
-          <p class="ev-desc">Switzerland's institutional digital asset leadership convenes at Google's Zurich headquarters. Keynotes from Swiss National Bank, SIX Digital Exchange, Sygnum, and FINMA representatives on the future of tokenized securities.</p>
-        </div>
-        <div class="ev-action">
-          <button class="ev-btn">Register</button>
-        </div>
-      </div>
-
-      <!-- ── APRIL ── -->
-      <div class="ev-card bs" data-month="apr" data-type="summit">
-        <div class="ev-date">
-          <div class="ev-day">15</div>
-          <div class="ev-month">Apr</div>
-        </div>
-        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
-        <div class="ev-body">
-          <div class="ev-badges">
-            <span class="ev-type">Summit</span>
-            <span class="ev-series fall">Fall Series</span>
-          </div>
-          <h3>Horizon Series: London</h3>
-          <div class="ev-meta">
-            <span><span class="ev-meta-dot"></span>London, United Kingdom</span>
-            <span>09:00 &ndash; 18:00 BST</span>
-          </div>
-          <p class="ev-desc">The Horizon Series crosses the Channel. Keynotes from UK-based institutional leaders at Standard Chartered, HSBC, Barclays, and the FCA on the post-Brexit digital asset regulatory landscape and institutional adoption.</p>
-        </div>
-        <div class="ev-action">
-          <button class="ev-btn">Register</button>
-        </div>
-      </div>
-
-      <!-- ── MAY ── -->
-      <div class="ev-card bs" data-month="may" data-type="dinner">
-        <div class="ev-date">
-          <div class="ev-day">20</div>
-          <div class="ev-month">May</div>
-        </div>
-        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
-        <div class="ev-body">
-          <div class="ev-badges">
-            <span class="ev-type">Dinner</span>
-            <span class="ev-series fall">Fall Series</span>
-          </div>
-          <h3>Horizon Series: Munich</h3>
-          <div class="ev-meta">
-            <span><span class="ev-meta-dot"></span>Munich, Germany</span>
-            <span>19:00 CET</span>
-          </div>
-          <p class="ev-desc">An exclusive evening for Bavaria's institutional digital asset community. Keynote address on the convergence of traditional asset management and tokenized fund structures, followed by networking dinner.</p>
-        </div>
-        <div class="ev-action">
-          <button class="ev-btn">Register</button>
-        </div>
-      </div>
-
+      )}
     </div><!-- end events-list -->
 
     <div class="view-more-wrap reveal" id="viewMoreWrap">
