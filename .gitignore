@@ -156,3 +156,4 @@ dist/
 frontend/public/
 .worktrees/
 .worktrees/
+.vercel

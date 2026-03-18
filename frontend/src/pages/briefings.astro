@@ -1,5 +1,101 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import type { Report, Person, Article } from '../types/content.js';
+
+// Fetch reports, team, and interviews from API during SSR
+let reports: Report[] = [];
+let team: Person[] = [];
+let interviewArticles: Article[] = [];
+let briefingArticles: Article[] = [];
+
+// Get the current URL for making relative API requests
+const siteUrl = Astro.url.origin;
+
+// Fetch reports
+try {
+  const apiUrl = `${siteUrl}/api/reports?limit=6`;
+  console.log(`[briefings.astro] Fetching reports from: ${apiUrl}`);
+  const response = await fetch(apiUrl);
+  if (response.ok) {
+    const data = await response.json();
+    reports = data.reports || [];
+    console.log(`[briefings.astro] Loaded ${reports.length} reports`);
+  } else {
+    console.error("[briefings.astro] API returned error:", response.status, await response.text());
+  }
+} catch (error) {
+  console.error("[briefings.astro] Failed to fetch reports from API:", error);
+}
+
+// Fetch interview articles
+try {
+  const articlesUrl = `${siteUrl}/api/articles?tags=interview&limit=3`;
+  console.log(`[briefings.astro] Fetching interviews from: ${articlesUrl}`);
+  const response = await fetch(articlesUrl);
+  if (response.ok) {
+    const data = await response.json();
+    interviewArticles = data.articles || [];
+    console.log(`[briefings.astro] Loaded ${interviewArticles.length} interview articles`);
+  } else {
+    console.error("[briefings.astro] Articles API returned error:", response.status, await response.text());
+  }
+} catch (error) {
+  console.error("[briefings.astro] Failed to fetch interview articles from API:", error);
+}
+
+// Fetch briefing articles (get newest, then filter for weekly briefings)
+const CRYPTO_PUB_ID = "pub_01715eca-8680-4c80-8348-b34552fe2aaf";
+const INSTITUTIONAL_PUB_ID = "pub_ea97d244-f74b-49b3-a7c0-17f14829e241";
+
+try {
+  const briefingsUrl = `${siteUrl}/api/articles?limit=40`;
+  console.log(`[briefings.astro] Fetching briefings from: ${briefingsUrl}`);
+  const response = await fetch(briefingsUrl);
+  if (response.ok) {
+    const data = await response.json();
+    const allArticles = data.articles || [];
+    // Filter to only include articles with "weekly briefing" tag
+    briefingArticles = allArticles
+      .filter((a: Article) => a.tags.includes("weekly briefing"))
+      .slice(0, 6);
+    console.log(`[briefings.astro] Loaded ${briefingArticles.length} briefing articles`);
+  } else {
+    console.error("[briefings.astro] Briefings API returned error:", response.status, await response.text());
+  }
+} catch (error) {
+  console.error("[briefings.astro] Failed to fetch briefing articles from API:", error);
+}
+
+// Fetch team members (IDs: 2, 3, 1)
+try {
+  const peopleUrl = `${siteUrl}/api/people?ids=2,3,1`;
+  console.log(`[briefings.astro] Fetching team from: ${peopleUrl}`);
+  const response = await fetch(peopleUrl);
+  if (response.ok) {
+    const data = await response.json();
+    team = data.people || [];
+    console.log(`[briefings.astro] Loaded ${team.length} team members`);
+  } else {
+    console.error("[briefings.astro] People API returned error:", response.status, await response.text());
+  }
+} catch (error) {
+  console.error("[briefings.astro] Failed to fetch team from API:", error);
+}
+
+// Helper to format date
+function formatReportDate(timestamp: number): string {
+  const date = new Date(timestamp * 1000);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric"
+  });
+}
+
+// Helper function to calculate read time from content
+function calculateReadTime(content?: string): number {
+  if (!content) return 0;
+  return Math.ceil(content.trim().split(/\s+/).length / 200);
+}
 ---
 
 <Layout title="Briefings — Blockstories">
@@ -306,122 +402,125 @@ import Layout from '../layouts/Layout.astro';
 <div class="wrap" style="padding-top:36px">
 
   <!-- ═══ FEATURED ═══ -->
-  <div class="feat reveal" data-type="briefing">
-    <div class="feat-vis">
-      <div class="feat-experts-vis">
-        <div class="feat-experts-vis-label">Experts featured</div>
-        <div class="feat-experts-vis-row">
-          <div class="feat-expert-vis"><div class="feat-expert-vis-avatar"><img src="Expert1.png" alt=""></div><div class="feat-expert-vis-name">Jean Devaux</div><div class="feat-expert-vis-co">CoinShares</div></div>
-          <div class="feat-expert-vis"><div class="feat-expert-vis-avatar"><img src="Expert2.png" alt=""></div><div class="feat-expert-vis-name">Thomas &amp; Frank</div><div class="feat-expert-vis-co">VanEck</div></div>
-          <div class="feat-expert-vis"><div class="feat-expert-vis-avatar"><img src="Expert3.png" alt=""></div><div class="feat-expert-vis-name">Laura Ruiz</div><div class="feat-expert-vis-co">Allfunds Blockchain</div></div>
-          <div class="feat-expert-vis"><div class="feat-expert-vis-avatar"><img src="Expert4.png" alt=""></div><div class="feat-expert-vis-name">Marc Woud</div><div class="feat-expert-vis-co">Woud Law</div></div>
+  {briefingArticles.length > 0 ? (
+    (() => {
+      const featuredBriefing = briefingArticles[0];
+      const isCrypto = featuredBriefing.beehiivPublicationId === CRYPTO_PUB_ID;
+      const isInstitutional = featuredBriefing.beehiivPublicationId === INSTITUTIONAL_PUB_ID;
+      const briefingType = isCrypto ? 'Crypto Briefing' : isInstitutional ? 'Institutional Briefing' : 'Briefing';
+      return (
+      <a href={featuredBriefing.webUrl} target="_blank" rel="noopener noreferrer" class="feat reveal" data-type="briefing">
+        <div class="feat-vis" style={featuredBriefing.thumbnailUrl ? `background-image: url('${featuredBriefing.thumbnailUrl}'); background-size: cover; background-position: center;` : undefined}>
+          {featuredBriefing.featured.length > 0 && (
+          <div class="feat-experts-vis">
+            <div class="feat-experts-vis-label">Experts featured</div>
+            <div class="feat-experts-vis-row">
+              {featuredBriefing.featured.map((person) => (
+              <div class="feat-expert-vis">
+                <div class="feat-expert-vis-avatar">
+                  {person.imageUrl ? (
+                    <img src={person.imageUrl} alt={person.name} />
+                  ) : (
+                    <div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:rgba(255,255,255,0.15);font-family:var(--mono);font-size:0.7rem;font-weight:600;color:#fff;">
+                      {person.name.split(" ").map(n => n[0]).join("")}
+                    </div>
+                  )}
+                </div>
+                <div class="feat-expert-vis-name">{person.name}</div>
+                {person.company && <div class="feat-expert-vis-co">{person.company}</div>}
+              </div>
+              ))}
+            </div>
+          </div>
+          )}
+        </div>
+        <div class="feat-txt">
+          <div class="feat-type">{briefingType} · {formatReportDate(featuredBriefing.publishDate)}</div>
+          <h3>{featuredBriefing.title}</h3>
+          <p class="excerpt">{featuredBriefing.shortSummary || featuredBriefing.summary || featuredBriefing.subtitle || ''}</p>
+          <div class="feat-meta">{featuredBriefing.content ? `${calculateReadTime(featuredBriefing.content)} min structured read` : 'Structured read'}</div>
+          {featuredBriefing.summary && (
+          <div class="feat-also">
+            <div class="feat-also-label">Also in this edition</div>
+            <ul class="feat-also-list">
+              {featuredBriefing.summary.split("\n").filter(line => line.trim()).map((line) => (
+                <li>{line}</li>
+              ))}
+            </ul>
+          </div>
+          )}
+        </div>
+      </a>
+      );
+    })()
+  ) : (
+    <div class="feat reveal" data-type="briefing">
+      <div class="feat-vis">
+        <div class="feat-experts-vis">
+          <div class="feat-experts-vis-label">Experts featured</div>
+          <div class="feat-experts-vis-row">
+            <div class="feat-expert-vis"><div class="feat-expert-vis-avatar"></div><div class="feat-expert-vis-name">Coming Soon</div></div>
+          </div>
         </div>
       </div>
-
-    </div>
-    <div class="feat-txt">
-      <div class="feat-type">Institutional Briefing · Feb 26, 2026</div>
-      <h3>Is it a fund? Money? Or is it both?</h3>
-      <p class="excerpt">The SEC granted WisdomTree an exemption allowing broker-dealers to trade its tokenized money market fund WTGXX intraday at a fixed $1.00. The line between tokenized MMFs and stablecoins is blurring fast.</p>
-      <div class="feat-meta">10 min structured read</div>
-      <div class="feat-also">
-        <div class="feat-also-label">Also in this edition</div>
-        <ul class="feat-also-list">
-          <li>Luxembourg's CSSF allows UCITS to allocate up to <strong>10% of NAV to crypto</strong> via eligible ETPs — a first for a major European fund domicile</li>
-          <li>Why tokenized money market funds are <strong>blurring the line with stablecoins</strong> — and what that means for institutional demand</li>
-          <li>Interviews with <strong>CoinShares, VanEck, Allfunds Blockchain</strong> and Woud Law on the CSSF decision</li>
-        </ul>
+      <div class="feat-txt">
+        <div class="feat-type">Briefing · Coming Soon</div>
+        <h3>Latest Briefings</h3>
+        <p class="excerpt">Stay tuned for our weekly briefings on institutional and crypto markets.</p>
+        <div class="feat-meta">Structured read</div>
       </div>
     </div>
-  </div>
+  )}
 
   <!-- ═══ LATEST BRIEFINGS ═══ -->
   <section class="ed-section reveal" data-section="briefing">
     <div class="sdiv"><h2>Latest Briefings</h2><a href="#">View All &rarr;</a></div>
     <p class="section-intro">Each week, we publish two flagship briefings — the Institutional and the Crypto Briefing — providing behind-the-scenes analysis.</p>
     <div class="section-grid--3">
-      <div class="bc" data-type="briefing">
-        <div class="bc-header bc-crypto">
-          <div class="bc-type">Crypto Briefing · Feb 13, 2026</div>
-          <h4>Twelve nine figures at Coinbase</h4>
-        </div>
-        <div class="bc-body">
-          <p>Coinbase reported $1.78B in Q4 revenue and now custodies 12% of all crypto globally. Twelve products each generating over $100M in annualized revenue.</p>
-          <div class="bc-authors">
-            <div class="bc-author-dot"><img src="fio.jpeg" alt=""></div>
-            <div class="bc-author-dot"><img src="Maximilian Vargas.jpg" alt=""></div>
-            <span class="bc-meta">Fiodar Yuzhyk &amp; Maximilian Vargas · 8 min read</span>
+      {briefingArticles.length > 0 ? (
+        briefingArticles.slice(1).map((article) => {
+          // Determine briefing type based on publication ID
+          const isCrypto = article.beehiivPublicationId === CRYPTO_PUB_ID;
+          const isInstitutional = article.beehiivPublicationId === INSTITUTIONAL_PUB_ID;
+          const briefingType = isCrypto ? 'Crypto Briefing' : isInstitutional ? 'Institutional Briefing' : 'Briefing';
+          return (
+            <a href={article.webUrl} target="_blank" rel="noopener noreferrer" class="bc" data-type="briefing">
+              <div class={`bc-header ${isCrypto ? 'bc-crypto' : ''}`} style={article.thumbnailUrl ? `background-image: url('${article.thumbnailUrl}'); background-size: cover; background-position: center;` : undefined}>
+                <div class="bc-type">{briefingType} · {formatReportDate(article.publishDate)}</div>
+                <h4>{article.title}</h4>
+              </div>
+              <div class="bc-body">
+                <p>{article.shortSummary || article.summary || article.subtitle || ''}</p>
+                <div class="bc-authors">
+                  {article.authors.map((author) => (
+                    <div class="bc-author-dot">
+                      {author.imageUrl ? (
+                        <img src={author.imageUrl} alt={author.name} />
+                      ) : (
+                        <div style="width:100%;height:100%;background:var(--surface-warm)" />
+                      )}
+                    </div>
+                  ))}
+                  <span class="bc-meta">
+                    {article.authors.map(a => a.name).join(' & ') || 'Blockstories Team'}
+                    {article.content && ` · ${calculateReadTime(article.content)} min read`}
+                  </span>
+                </div>
+              </div>
+            </a>
+          );
+        })
+      ) : (
+        <div class="bc" data-type="briefing">
+          <div class="bc-header">
+            <div class="bc-type">Briefing · Coming Soon</div>
+            <h4>Latest Briefings</h4>
+          </div>
+          <div class="bc-body">
+            <p>Stay tuned for our weekly briefings on institutional and crypto markets.</p>
           </div>
         </div>
-      </div>
-      <div class="bc" data-type="briefing">
-        <div class="bc-header">
-          <div class="bc-type">Institutional Briefing · Feb 19, 2026</div>
-          <h4>Luxembourg Opens the UCITS Door</h4>
-        </div>
-        <div class="bc-body">
-          <p>The CSSF allows UCITS to allocate up to 10% of NAV to crypto via eligible ETPs — the first move by a major European fund domicile.</p>
-          <div class="bc-authors">
-            <div class="bc-author-dot"><img src="Louis Tellier_new.jpg" alt=""></div>
-            <div class="bc-author-dot"><img src="Maximilian Vargas.jpg" alt=""></div>
-            <span class="bc-meta">Louis Tellier &amp; Maximilian Vargas · 9 min read</span>
-          </div>
-        </div>
-      </div>
-      <div class="bc" data-type="briefing">
-        <div class="bc-header bc-crypto">
-          <div class="bc-type">Crypto Briefing · Jan 30, 2026</div>
-          <h4>The MiCA Effect on European Exchanges</h4>
-        </div>
-        <div class="bc-body">
-          <p>European crypto exchanges are restructuring in response to MiCA enforcement. Some consolidate, others expand. Who's winning the regulatory race?</p>
-          <div class="bc-authors">
-            <div class="bc-author-dot"><img src="fio.jpeg" alt=""></div>
-            <span class="bc-meta">Fiodar Yuzhyk · 7 min read</span>
-          </div>
-        </div>
-      </div>
-      <div class="bc" data-type="briefing">
-        <div class="bc-header">
-          <div class="bc-type">Institutional Briefing · Jan 22, 2026</div>
-          <h4>BlackRock's BUIDL Crosses $1B in AUM</h4>
-        </div>
-        <div class="bc-body">
-          <p>BlackRock's tokenized treasury fund surpasses $1B, signaling a tipping point for institutional adoption of on-chain money market products.</p>
-          <div class="bc-authors">
-            <div class="bc-author-dot"><img src="Louis Tellier_new.jpg" alt=""></div>
-            <span class="bc-meta">Louis Tellier · 8 min read</span>
-          </div>
-        </div>
-      </div>
-      <div class="bc" data-type="briefing">
-        <div class="bc-header bc-crypto">
-          <div class="bc-type">Crypto Briefing · Jan 15, 2026</div>
-          <h4>Ethereum's Pectra Upgrade: What It Means for Institutions</h4>
-        </div>
-        <div class="bc-body">
-          <p>Ethereum's next major upgrade brings account abstraction and validator improvements. Why institutional infrastructure providers are paying close attention.</p>
-          <div class="bc-authors">
-            <div class="bc-author-dot"><img src="fio.jpeg" alt=""></div>
-            <div class="bc-author-dot"><img src="Maximilian Vargas.jpg" alt=""></div>
-            <span class="bc-meta">Fiodar Yuzhyk &amp; Maximilian Vargas · 9 min read</span>
-          </div>
-        </div>
-      </div>
-      <div class="bc" data-type="briefing">
-        <div class="bc-header">
-          <div class="bc-type">Institutional Briefing · Jan 8, 2026</div>
-          <h4>Deutsche Börse's Digital Asset Ambitions</h4>
-        </div>
-        <div class="bc-body">
-          <p>Germany's largest exchange operator expands its digital asset custody and trading infrastructure, positioning itself as a European institutional gateway.</p>
-          <div class="bc-authors">
-            <div class="bc-author-dot"><img src="Louis Tellier_new.jpg" alt=""></div>
-            <div class="bc-author-dot"><img src="Maximilian Vargas.jpg" alt=""></div>
-            <span class="bc-meta">Louis Tellier &amp; Maximilian Vargas · 10 min read</span>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
     <div class="load-more-wrap"><button class="load-more-btn">Load More Briefings</button></div>
   </section>
@@ -445,45 +544,37 @@ import Layout from '../layouts/Layout.astro';
     <div class="sdiv"><h2>Interviews</h2><a href="#">View All &rarr;</a></div>
     <p class="section-intro">Conversations with the leaders building Europe's digital asset infrastructure.</p>
     <div class="section-grid--3">
-      <div class="ic" data-type="interview">
-        <div class="ic-vis">
-          <span class="ic-badge">Interview</span>
-          <div class="ic-avatar"></div>
+      {interviewArticles.length > 0 ? (
+        interviewArticles.map((article) => (
+          <a href={article.webUrl} target="_blank" rel="noopener noreferrer" class="ic" data-type="interview">
+            <div class="ic-vis" style={article.thumbnailUrl ? `background-image: url('${article.thumbnailUrl}'); background-size: cover; background-position: center;` : undefined}>
+              <span class="ic-badge">Interview</span>
+              {!article.thumbnailUrl && <div class="ic-avatar"></div>}
+            </div>
+            <div class="ic-body">
+              <div class="ic-type">Interview · {formatReportDate(article.publishDate)}</div>
+              <h4>{article.title}</h4>
+              {article.featured.length > 0 && (
+                <div class="ic-role">{article.featured.map(p => `${p.name}${p.company ? `, ${p.company}` : ''}`).join(', ')}</div>
+              )}
+              <p>{article.shortSummary || article.summary || article.subtitle || ''}</p>
+              {article.content && <div class="ic-meta">{calculateReadTime(article.content)} min read</div>}
+            </div>
+          </a>
+        ))
+      ) : (
+        <div class="ic" data-type="interview">
+          <div class="ic-vis">
+            <span class="ic-badge">Interview</span>
+            <div class="ic-avatar"></div>
+          </div>
+          <div class="ic-body">
+            <div class="ic-type">Interview · Coming Soon</div>
+            <h4>Interviews Coming Soon</h4>
+            <p>Stay tuned for exclusive interviews with industry leaders.</p>
+          </div>
         </div>
-        <div class="ic-body">
-          <div class="ic-type">Interview · Aug 6, 2025</div>
-          <h4>Inside BBVA's Crypto Playbook</h4>
-          <div class="ic-role">Francisco Maroto, Head of Digital Assets, BBVA</div>
-          <p>How Europe's digital assets pioneer went from early blockchain experiments to launching MiCA-regulated crypto services across the continent.</p>
-          <div class="ic-meta">8 min read</div>
-        </div>
-      </div>
-      <div class="ic" data-type="interview">
-        <div class="ic-vis">
-          <span class="ic-badge">Interview</span>
-          <div class="ic-avatar"></div>
-        </div>
-        <div class="ic-body">
-          <div class="ic-type">Interview · Jul 18, 2025</div>
-          <h4>Deutsche Bank's Digital Custody Vision</h4>
-          <div class="ic-role">Head of Digital Assets Strategy, Deutsche Bank</div>
-          <p>Germany's largest bank on building institutional custody infrastructure, MiCA readiness, and multi-market expansion plans.</p>
-          <div class="ic-meta">10 min read</div>
-        </div>
-      </div>
-      <div class="ic" data-type="interview">
-        <div class="ic-vis">
-          <span class="ic-badge">Interview</span>
-          <div class="ic-avatar"></div>
-        </div>
-        <div class="ic-body">
-          <div class="ic-type">Interview · Jun 25, 2025</div>
-          <h4>SocGen Forge: Building the Rails</h4>
-          <div class="ic-role">CEO, SocGen Forge</div>
-          <p>How Societe Generale's digital asset arm became one of Europe's most active tokenized securities issuers.</p>
-          <div class="ic-meta">9 min read</div>
-        </div>
-      </div>
+      )}
     </div>
   </section>
 
@@ -492,36 +583,38 @@ import Layout from '../layouts/Layout.astro';
     <div class="sdiv"><h2>Our Team</h2></div>
     <p class="section-intro">The research team behind Blockstories' institutional intelligence.</p>
     <div class="authors-grid">
-      <div class="author-card">
-        <div class="author-photo"><img src="Maximilian Vargas.jpg" alt=""></div>
-        <h4>Maximilian Vargas</h4>
-        <div class="author-role">Founder</div>
-        <p>Former institutional strategist. Covers tokenization, regulatory frameworks, and market structure.</p>
-        <div class="author-socials">
-          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
-          <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+      {team.length > 0 ? (
+        team.map((person) => (
+          <div class="author-card">
+            <div class="author-photo">
+              {person.imageUrl ? (
+                <img src={person.imageUrl} alt={person.name} />
+              ) : (
+                <div style="width:100%;height:100%;background:var(--surface-warm)" />
+              )}
+            </div>
+            <h4>{person.name}</h4>
+            <div class="author-role">{person.company || 'Researcher'}</div>
+            <p>{person.description || ''}</p>
+            <div class="author-socials">
+              {person.linkedinUrl && (
+                <a href={person.linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
+                </a>
+              )}
+              {person.twitterUrl && (
+                <a href={person.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="X">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+              )}
+            </div>
+          </div>
+        ))
+      ) : (
+        <div class="author-card">
+          <p>Team information loading...</p>
         </div>
-      </div>
-      <div class="author-card">
-        <div class="author-photo"><img src="Louis Tellier_new.jpg" alt=""></div>
-        <h4>Louis Tellier</h4>
-        <div class="author-role">Lead Institutional Research</div>
-        <p>Specialist in European fund regulation, UCITS frameworks, and institutional adoption patterns.</p>
-        <div class="author-socials">
-          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
-          <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-        </div>
-      </div>
-      <div class="author-card">
-        <div class="author-photo"><img src="fio.jpeg" alt=""></div>
-        <h4>Fiodar Yuzhyk</h4>
-        <div class="author-role">Lead Crypto Research</div>
-        <p>Covers crypto market structure, exchange dynamics, and MiCA compliance across European markets.</p>
-        <div class="author-socials">
-          <a href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg></a>
-          <a href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-        </div>
-      </div>
+      )}
     </div>
   </section>
 
@@ -529,61 +622,76 @@ import Layout from '../layouts/Layout.astro';
   <section class="ed-section reveal" data-section="report">
     <div class="sdiv"><h2>Research &amp; Reports</h2><a href="#">View All &rarr;</a></div>
     <p class="section-intro">In-depth research reports covering tokenization, stablecoins, and institutional adoption across European markets.</p>
-    <div class="report-showcase">
-      <div class="report-featured">
-        <div class="rc" data-type="report">
-          <div class="rc-vis">
-            <span class="rc-badge">Special Report</span>
-            <span class="rc-icon">&#9783;</span>
-          </div>
-          <div class="rc-body">
-            <div class="rc-type">Featured Report · Jan 2026</div>
-            <h4>25 Expert Outlooks for 2026</h4>
-            <p>The industry's foremost experts share perspectives on tokenization, stablecoins, regulation and institutional adoption.</p>
-            <div class="rc-stats">
-              <span class="rc-stat"><strong>42</strong> min read</span>
-              <span class="rc-stat"><strong>25</strong> experts</span>
-              <span class="rc-stat"><strong>PDF</strong></span>
+    {reports.length > 0 ? (
+      <div class="report-showcase">
+        {reports[0] && (
+          <div class="report-featured">
+            <div class="rc" data-type="report" data-report-id={reports[0].id}>
+              <div class="rc-vis" style={reports[0].thumbnailUrl ? `background-image: url('${reports[0].thumbnailUrl}'); background-size: cover; background-position: center;` : undefined}>
+                <span class="rc-badge">Report</span>
+                {!reports[0].thumbnailUrl && <span class="rc-icon">&#9783;</span>}
+              </div>
+              <div class="rc-body">
+                <div class="rc-type">Report · {formatReportDate(reports[0].publishDate)}</div>
+                <h4>{reports[0].title}</h4>
+                {reports[0].subtitle && <p style="font-size:.8rem;color:var(--text-2);margin-top:-4px;margin-bottom:8px;">{reports[0].subtitle}</p>}
+                <p>{reports[0].shortSummary || reports[0].summary || ''}</p>
+                {reports[0].authors.length > 0 && (
+                  <div class="rc-stats">
+                    <span class="rc-stat"><strong>{reports[0].authors.length}</strong> {reports[0].authors.length === 1 ? 'author' : 'authors'}</span>
+                  </div>
+                )}
+                {reports[0].webUrl ? (
+                  <a href={reports[0].webUrl} target="_blank" rel="noopener noreferrer" class="rc-dl">View Report</a>
+                ) : (
+                  <button class="rc-dl">Download Report</button>
+                )}
+              </div>
             </div>
-            <button class="rc-dl">Download Report</button>
+          </div>
+        )}
+        {reports.length > 1 && (
+          <div class="report-secondary">
+            {reports.slice(1, 3).map((report, index) => (
+              <div class="rc" data-type="report" data-report-id={report.id}>
+                <div class="rc-vis" style={report.thumbnailUrl ? `background-image: url('${report.thumbnailUrl}'); background-size: cover; background-position: center;` : (index === 0 ? "background:linear-gradient(135deg,#1a3a5c,#122B42)" : "background:linear-gradient(135deg,#2a5a56,#122B42)")}>
+                  <span class="rc-badge">Report</span>
+                  {!report.thumbnailUrl && <span class="rc-icon">&#9783;</span>}
+                </div>
+                <div class="rc-body">
+                  <div class="rc-type">Report · {formatReportDate(report.publishDate)}</div>
+                  <h4>{report.title}</h4>
+                  {report.subtitle && <p style="font-size:.75rem;color:var(--text-2);margin-top:-4px;margin-bottom:8px;">{report.subtitle}</p>}
+                  <p>{report.shortSummary || report.summary || ''}</p>
+                  {report.webUrl ? (
+                    <a href={report.webUrl} target="_blank" rel="noopener noreferrer" class="rc-dl">View Report</a>
+                  ) : (
+                    <button class="rc-dl">Download Report</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    ) : (
+      <div class="report-showcase">
+        <div class="report-featured">
+          <div class="rc" data-type="report">
+            <div class="rc-vis">
+              <span class="rc-badge">Coming Soon</span>
+              <span class="rc-icon">&#9783;</span>
+            </div>
+            <div class="rc-body">
+              <div class="rc-type">Report · Coming Soon</div>
+              <h4>Research Reports Coming Soon</h4>
+              <p>Stay tuned for our upcoming research reports on tokenization, stablecoins, and institutional adoption.</p>
+              <button class="rc-dl" disabled>Coming Soon</button>
+            </div>
           </div>
         </div>
       </div>
-      <div class="report-secondary">
-        <div class="rc" data-type="report">
-          <div class="rc-vis" style="background:linear-gradient(135deg,#1a3a5c,#122B42)">
-            <span class="rc-badge">Research</span>
-            <span class="rc-icon">&#9783;</span>
-          </div>
-          <div class="rc-body">
-            <div class="rc-type">Research Report · Dec 2025</div>
-            <h4>European Tokenization Landscape</h4>
-            <p>Comprehensive mapping of tokenization activity across European financial institutions and infrastructure providers.</p>
-            <div class="rc-stats">
-              <span class="rc-stat"><strong>38</strong> pages</span>
-              <span class="rc-stat"><strong>67</strong> institutions</span>
-            </div>
-            <button class="rc-dl">Download Report</button>
-          </div>
-        </div>
-        <div class="rc" data-type="report">
-          <div class="rc-vis" style="background:linear-gradient(135deg,#2a5a56,#122B42)">
-            <span class="rc-badge">Flagship</span>
-            <span class="rc-icon">&#9783;</span>
-          </div>
-          <div class="rc-body">
-            <div class="rc-type">Flagship Report · Nov 2025</div>
-            <h4>European Banks &amp; Stablecoins Report</h4>
-            <p>Eight in-depth interviews with European banks on their stablecoin strategies, use cases, and operational frameworks.</p>
-            <div class="rc-stats">
-              <span class="rc-stat"><strong>45</strong> pages</span>
-              <span class="rc-stat"><strong>8</strong> banks</span>
-            </div>
-            <button class="rc-dl">Download Report</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    )}
   </section>
 
 
@@ -631,38 +739,43 @@ import Layout from '../layouts/Layout.astro';
 // ═══ Content Tabs ═══
 const contentTabs=document.getElementById('contentTabs');
 if(contentTabs){
-  const feat=document.querySelector('.feat');
+  const feat=document.querySelector('.feat') as HTMLElement | null;
   const allItems=document.querySelectorAll('[data-type]');
   const sections=document.querySelectorAll('[data-section]');
   const pullQuote=null;
-  const inlineCta=document.querySelector('.inline-cta');
-  const authorsSec=document.querySelector('.authors-sec');
+  const inlineCta=document.querySelector('.inline-cta') as HTMLElement | null;
+  const authorsSec=document.querySelector('.authors-sec') as HTMLElement | null;
 
-  contentTabs.querySelectorAll('.tab').forEach(t=>{
+  contentTabs.querySelectorAll('.tab').forEach(tab=>{
+    const t = tab as HTMLElement;
     t.addEventListener('click',()=>{
       contentTabs.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
       t.classList.add('on');
       const f=t.dataset.f;
 
       // Featured card
-      if(f==='all') feat.style.display='';
-      else feat.style.display=feat.dataset.type===f?'':'none';
+      if(feat){
+        if(f==='all') feat.style.display='';
+        else feat.style.display=feat.dataset.type===f?'':'none';
+      }
 
       // Individual items within sections
       allItems.forEach(item=>{
-        if(f==='all') item.style.display='';
-        else item.style.display=item.dataset.type===f?'':'none';
+        const el = item as HTMLElement;
+        if(f==='all') el.style.display='';
+        else el.style.display=el.dataset.type===f?'':'none';
       });
 
       // Sections — show/hide by matching type
       sections.forEach(s=>{
-        if(f==='all') s.style.display='';
-        else s.style.display=s.dataset.section===f?'':'none';
+        const el = s as HTMLElement;
+        if(f==='all') el.style.display='';
+        else el.style.display=el.dataset.section===f?'':'none';
       });
 
       // Decorative elements — only show in "all" view
       [pullQuote,inlineCta,authorsSec].forEach(el=>{
-        if(el) el.style.display=f==='all'?'':'none';
+        if(el) (el as HTMLElement).style.display=f==='all'?'':'none';
       });
     });
   });

@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { getNewestArticles, getArticlesByTags } from "../../../../backend/db/queries.js";
+import { getNewestReports, getReportsByTags } from "../../../../backend/db/queries.js";
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
@@ -26,21 +26,21 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    // If tags are specified, filter by tags; otherwise get newest articles
-    let articles;
+    // If tags are specified, filter by tags; otherwise get newest reports
+    let reports;
     if (tags) {
       const tagArray = tags.split(",").map(t => t.trim()).filter(Boolean);
-      articles = await getArticlesByTags(limit, tagArray.length > 0 ? tagArray : undefined);
+      reports = await getReportsByTags(limit, tagArray.length > 0 ? tagArray : undefined);
     } else {
-      articles = await getNewestArticles(limit, offset);
+      reports = await getNewestReports(limit, offset);
     }
 
-    return new Response(JSON.stringify({ articles, count: articles.length }), {
+    return new Response(JSON.stringify({ reports, count: reports.length }), {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    console.error("[API] Error fetching articles:", error);
+    console.error("[API] Error fetching reports:", error);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }

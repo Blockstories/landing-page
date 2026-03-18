@@ -7,6 +7,9 @@ export interface Person {
   slug: string;
   imageUrl?: string | null;
   company?: string | null;
+  description?: string | null;
+  linkedinUrl?: string | null;
+  twitterUrl?: string | null;
 }
 
 export interface Article {
@@ -35,4 +38,21 @@ export interface NewsItem {
   createdAt: string;
   urls: string[];
   theme: string;
+}
+
+export type ReportRole = "author" | "featured";
+
+export interface Report {
+  id: number;
+  title: string;
+  subtitle?: string;
+  authors: Person[];
+  featured: Person[];
+  publishDate: number;
+  tags: string[];
+  thumbnailUrl?: string;
+  webUrl?: string;
+  summary?: string;
+  shortSummary?: string;
+  content?: string;
 }
