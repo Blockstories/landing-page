@@ -152,16 +152,20 @@ export async function getNewestArticles(count: number = 10, offset: number = 0):
 
     // If there's a person (LEFT JOIN may return nulls)
     if (row.person_id) {
-      entry.people.push({
-        person: mapRowToPerson({
-          id: row.person_id,
-          name: row.name,
-          slug: row.slug,
-          image_url: row.image_url,
-          company: row.company
-        }),
-        role: row.role as ArticleRole
-      });
+      // Avoid duplicate people (can happen with multiple tags per article)
+      const existingIndex = entry.people.findIndex(p => p.person.id === row.person_id);
+      if (existingIndex === -1) {
+        entry.people.push({
+          person: mapRowToPerson({
+            id: row.person_id,
+            name: row.name,
+            slug: row.slug,
+            image_url: row.image_url,
+            company: row.company
+          }),
+          role: row.role as ArticleRole
+        });
+      }
     }
 
     // If there's a tag (LEFT JOIN may return nulls)
@@ -747,16 +751,20 @@ export async function getArticlesByPublication(
 
     // If there's a person (LEFT JOIN may return nulls)
     if (row.person_id) {
-      entry.people.push({
-        person: mapRowToPerson({
-          id: row.person_id,
-          name: row.name,
-          slug: row.slug,
-          image_url: row.image_url,
-          company: row.company
-        }),
-        role: row.role as ArticleRole
-      });
+      // Avoid duplicate people (can happen with multiple tags per article)
+      const existingIndex = entry.people.findIndex(p => p.person.id === row.person_id);
+      if (existingIndex === -1) {
+        entry.people.push({
+          person: mapRowToPerson({
+            id: row.person_id,
+            name: row.name,
+            slug: row.slug,
+            image_url: row.image_url,
+            company: row.company
+          }),
+          role: row.role as ArticleRole
+        });
+      }
     }
 
     // If there's a tag (LEFT JOIN may return nulls)
@@ -1215,4 +1223,27 @@ export async function deleteReport(reportId: number): Promise<void> {
     "DELETE FROM reports WHERE id = ?",
     [reportId]
   );
+}
+
+/**
+ * Get people by IDs
+ * Returns people in the order of the provided IDs
+ */
+export async function getPeopleByIds(ids: number[]): Promise<Person[]> {
+  if (ids.length === 0) return [];
+
+  const placeholders = ids.map(() => "?").join(", ");
+  const query = `SELECT * FROM people WHERE id IN (${placeholders}) ORDER BY id`;
+
+  const result = await db.execute(query, ids);
+
+  // Create a map to maintain order
+  const peopleMap = new Map<number, Person>();
+  for (const row of result.rows) {
+    const person = mapRowToPerson(row);
+    peopleMap.set(person.id, person);
+  }
+
+  // Return in the order of requested IDs
+  return ids.map(id => peopleMap.get(id)).filter((p): p is Person => p !== undefined);
 }

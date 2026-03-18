@@ -50,6 +50,9 @@ export function mapRowToPerson(row: RowLike): Person {
     slug: row.slug as string,
     imageUrl: row.image_url as string | undefined ?? undefined,
     company: (row.company as string | null) ?? null,
+    description: (row.description as string | null) ?? null,
+    linkedinUrl: (row.linkedin_url as string | null) ?? null,
+    twitterUrl: (row.twitter_url as string | null) ?? null,
   };
 }
 

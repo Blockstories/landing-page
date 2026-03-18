@@ -27,6 +27,9 @@ export interface Person {
   slug: string;
   imageUrl?: string | null;
   company?: string | null;
+  description?: string | null;
+  linkedinUrl?: string | null;
+  twitterUrl?: string | null;
 }
 
 export interface Report {
