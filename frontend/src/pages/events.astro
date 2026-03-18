@@ -1,0 +1,886 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+---
+
+<Layout title="Events — Blockstories">
+  <Header activePage="events" />
+
+  <!-- ═══ EVENTS HERO ═══ -->
+  <section class="events-hero">
+    <div class="hero-video-bg">
+      <video autoplay muted loop playsinline>
+        <source src="/C0677_10.mp4" type="video/mp4">
+      </video>
+    </div>
+    <div class="wrap">
+      <div class="hero-inner">
+        <div class="hero-top">
+          <div class="hero-content">
+            <div class="hero-label">Blockstories Horizon</div>
+            <h1>Where Europe's Digital Assets Leaders Explore <em>Big Ideas</em></h1>
+            <div class="hero-ctas">
+              <a href="#upcoming" class="btn-outline">Upcoming Events</a>
+              <a href="#sponsor" class="btn-accent">Become a Sponsor</a>
+            </div>
+          </div>
+        </div>
+        <div class="hero-stats-inline">
+          <span class="hero-stat-pill">2,000+ Attendees</span>
+          <span class="hero-stat-pill">8 Cities</span>
+          <span class="hero-stat-pill">Keynotes Only</span>
+          <span class="hero-stat-pill">Institutional</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ UPCOMING EVENTS ═══ -->
+  <div class="wrap" id="upcoming">
+    <div class="section-hdr reveal">
+      <h2>Upcoming Events</h2>
+      <div class="section-hdr-line"></div>
+    </div>
+    <p class="invite-note reveal">Every Blockstories event follows a guiding principle: quality over quantity. Attendance is invitation-only or approval-only.</p>
+
+    <div class="ev-filters reveal" id="evFilters">
+      <button class="ev-filter on" data-filter="all">All</button>
+      <button class="ev-filter" data-filter="summit">Summits</button>
+      <button class="ev-filter" data-filter="dinner">Dinners</button>
+      <button class="ev-filter" data-filter="webinar">Webinars</button>
+      <button class="ev-filter" data-filter="workshop">Workshops</button>
+    </div>
+
+    <div class="events-list" id="eventsList">
+
+      <!-- ── FEBRUARY ── -->
+      <div class="ev-card bs" data-month="feb" data-type="webinar">
+        <div class="ev-date">
+          <div class="ev-day">19</div>
+          <div class="ev-month">Feb</div>
+        </div>
+        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
+        <div class="ev-body">
+          <div class="ev-badges">
+            <span class="ev-type">Webinar</span>
+            <span class="ev-series winter">Winter Series</span>
+          </div>
+          <h3>Vaults, ETFs &amp; Tokenized Funds</h3>
+          <div class="ev-meta">
+            <span><span class="ev-meta-dot"></span>Online</span>
+            <span>14:00 CET</span>
+          </div>
+          <p class="ev-desc">A structured comparison of institutional fund vehicles entering the digital asset space. How do vault structures, crypto ETFs, and tokenized money market funds differ in regulatory treatment, investor access, and operational risk?</p>
+        </div>
+        <div class="ev-action">
+          <button class="ev-btn">Register</button>
+        </div>
+      </div>
+
+      <div class="ev-card bs" data-month="feb" data-type="summit">
+        <div class="ev-date">
+          <div class="ev-day">24</div>
+          <div class="ev-month">Feb</div>
+        </div>
+        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
+        <div class="ev-body">
+          <div class="ev-badges">
+            <span class="ev-type">Summit</span>
+            <span class="ev-series winter">Winter Series</span>
+          </div>
+          <h3>Horizon Series: Frankfurt</h3>
+          <div class="ev-meta">
+            <span><span class="ev-meta-dot"></span>Nextower, Frankfurt</span>
+            <span>09:00 &ndash; 18:00 CET</span>
+          </div>
+          <p class="ev-desc">The flagship Horizon Series summit returns to Frankfurt. Keynotes from heads of digital asset strategy at Deutsche Bank, Commerzbank, DZ Bank, and DekaBank. Institutional networking dinner included.</p>
+        </div>
+        <div class="ev-action">
+          <button class="ev-btn">Register</button>
+        </div>
+      </div>
+
+      <!-- ── MARCH ── -->
+      <div class="ev-card bs" data-month="mar" data-type="webinar">
+        <div class="ev-date">
+          <div class="ev-day">05</div>
+          <div class="ev-month">Mar</div>
+        </div>
+        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
+        <div class="ev-body">
+          <div class="ev-badges">
+            <span class="ev-type">Webinar</span>
+            <span class="ev-series summer">Summer Series</span>
+          </div>
+          <h3>Digital Assets Infrastructure</h3>
+          <div class="ev-meta">
+            <span><span class="ev-meta-dot"></span>Online</span>
+            <span>15:00 CET</span>
+          </div>
+          <p class="ev-desc">Custody, settlement, and post-trade infrastructure for institutional digital asset operations. Technical deep-dive into the infrastructure layer powering Europe's next generation of financial market infrastructure.</p>
+        </div>
+        <div class="ev-action">
+          <button class="ev-btn">Register</button>
+        </div>
+      </div>
+
+      <div class="ev-card bs" data-month="mar" data-type="dinner">
+        <div class="ev-date">
+          <div class="ev-day">10</div>
+          <div class="ev-month">Mar</div>
+        </div>
+        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
+        <div class="ev-body">
+          <div class="ev-badges">
+            <span class="ev-type">Dinner</span>
+            <span class="ev-series summer">Summer Series</span>
+          </div>
+          <h3>Horizon Series: Paris</h3>
+          <div class="ev-meta">
+            <span><span class="ev-meta-dot"></span>Paris</span>
+            <span>19:00 CET</span>
+          </div>
+          <p class="ev-desc">An intimate evening gathering for C-suite executives and heads of digital asset strategy from France's leading financial institutions. Keynote address followed by structured networking over dinner.</p>
+        </div>
+        <div class="ev-action">
+          <button class="ev-btn">Register</button>
+        </div>
+      </div>
+
+      <div class="ev-card bs" data-month="mar" data-type="summit">
+        <div class="ev-date">
+          <div class="ev-day">18</div>
+          <div class="ev-month">Mar</div>
+        </div>
+        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
+        <div class="ev-body">
+          <div class="ev-badges">
+            <span class="ev-type">Summit</span>
+            <span class="ev-series summer">Summer Series</span>
+          </div>
+          <h3>Horizon Series: Zurich</h3>
+          <div class="ev-meta">
+            <span><span class="ev-meta-dot"></span>Google HQ, Zurich</span>
+            <span>09:00 &ndash; 17:00 CET</span>
+          </div>
+          <p class="ev-desc">Switzerland's institutional digital asset leadership convenes at Google's Zurich headquarters. Keynotes from Swiss National Bank, SIX Digital Exchange, Sygnum, and FINMA representatives on the future of tokenized securities.</p>
+        </div>
+        <div class="ev-action">
+          <button class="ev-btn">Register</button>
+        </div>
+      </div>
+
+      <!-- ── APRIL ── -->
+      <div class="ev-card bs" data-month="apr" data-type="summit">
+        <div class="ev-date">
+          <div class="ev-day">15</div>
+          <div class="ev-month">Apr</div>
+        </div>
+        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
+        <div class="ev-body">
+          <div class="ev-badges">
+            <span class="ev-type">Summit</span>
+            <span class="ev-series fall">Fall Series</span>
+          </div>
+          <h3>Horizon Series: London</h3>
+          <div class="ev-meta">
+            <span><span class="ev-meta-dot"></span>London, United Kingdom</span>
+            <span>09:00 &ndash; 18:00 BST</span>
+          </div>
+          <p class="ev-desc">The Horizon Series crosses the Channel. Keynotes from UK-based institutional leaders at Standard Chartered, HSBC, Barclays, and the FCA on the post-Brexit digital asset regulatory landscape and institutional adoption.</p>
+        </div>
+        <div class="ev-action">
+          <button class="ev-btn">Register</button>
+        </div>
+      </div>
+
+      <!-- ── MAY ── -->
+      <div class="ev-card bs" data-month="may" data-type="dinner">
+        <div class="ev-date">
+          <div class="ev-day">20</div>
+          <div class="ev-month">May</div>
+        </div>
+        <div class="ev-thumb"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg></div>
+        <div class="ev-body">
+          <div class="ev-badges">
+            <span class="ev-type">Dinner</span>
+            <span class="ev-series fall">Fall Series</span>
+          </div>
+          <h3>Horizon Series: Munich</h3>
+          <div class="ev-meta">
+            <span><span class="ev-meta-dot"></span>Munich, Germany</span>
+            <span>19:00 CET</span>
+          </div>
+          <p class="ev-desc">An exclusive evening for Bavaria's institutional digital asset community. Keynote address on the convergence of traditional asset management and tokenized fund structures, followed by networking dinner.</p>
+        </div>
+        <div class="ev-action">
+          <button class="ev-btn">Register</button>
+        </div>
+      </div>
+
+    </div><!-- end events-list -->
+
+    <div class="view-more-wrap reveal" id="viewMoreWrap">
+      <button class="view-more-btn" id="viewMoreBtn">View More Events</button>
+    </div>
+  </div><!-- end upcoming wrap -->
+
+  <!-- ═══ HORIZON SERIES SHOWCASE ═══ -->
+  <section class="horizon" id="horizon">
+    <div class="wrap">
+      <div class="horizon-inner reveal">
+        <div class="horizon-text">
+          <div class="horizon-label">Flagship Format</div>
+          <h2>The Horizon <em>Series</em></h2>
+          <p class="horizon-desc">Blockstories Horizon is Europe's largest institutional event series on digital assets. Over eight weeks, the series travels across Europe, combining summits, workshops, private dinners, and webinars into a single program for institutional decision-makers.</p>
+          <p class="horizon-desc">At each summit, our speakers present a single, well-argued thesis on a market shift that will become strategically important for financial institutions. The result is the highest concentration of actionable insight at any European digital asset event.</p>
+          <div class="horizon-stats">
+            <div class="h-stat">
+              <div class="h-stat-val">3</div>
+              <div class="h-stat-lbl">Horizon Series per Year</div>
+            </div>
+            <div class="h-stat">
+              <div class="h-stat-val">800+</div>
+              <div class="h-stat-lbl">Total Attendees per Series</div>
+            </div>
+            <div class="h-stat">
+              <div class="h-stat-val">4</div>
+              <div class="h-stat-lbl">Cities per Series</div>
+            </div>
+            <div class="h-stat">
+              <div class="h-stat-val">8</div>
+              <div class="h-stat-lbl">Partners per Series</div>
+            </div>
+          </div>
+        </div>
+        <div class="gallery-video">
+          <video autoplay muted loop playsinline poster="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=1200&h=600&fit=crop">
+            <source src="/C0677_10.mp4" type="video/mp4">
+          </video>
+          <div class="gv-caption">
+            <div class="gv-caption-eye">Horizon Series &middot; London Summit Recap</div>
+            <div class="gv-caption-title">120 Attendees. 8 Keynotes. <em>One Rule.</em></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ THEMES TICKER ═══ -->
+  <div class="themes-ticker">
+    <div class="themes-ticker-header">
+      <div class="themes-ticker-label">What Gets Discussed</div>
+      <div class="themes-ticker-title">The Big Ideas on <em>Stage</em></div>
+    </div>
+    <div class="ticker-track">
+      <span class="ticker-item">Fund Tokenization<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Onchain Privacy<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Next-Generation Custody<span class="ticker-sep"></span></span>
+      <span class="ticker-item">RWA Looping<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Stablecoin Consortia<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Modular Institutional-Grade Infrastructure<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Onchain Vaults<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Onchain Corporate Treasury<span class="ticker-sep"></span></span>
+      <!-- duplicate for seamless loop -->
+      <span class="ticker-item">Fund Tokenization<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Onchain Privacy<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Next-Generation Custody<span class="ticker-sep"></span></span>
+      <span class="ticker-item">RWA Looping<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Stablecoin Consortia<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Modular Institutional-Grade Infrastructure<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Onchain Vaults<span class="ticker-sep"></span></span>
+      <span class="ticker-item">Onchain Corporate Treasury<span class="ticker-sep"></span></span>
+    </div>
+  </div>
+
+  <!-- ═══ TESTIMONIALS ═══ -->
+  <div class="wrap">
+    <div class="testimonials reveal">
+      <div class="test-grid">
+        <div class="test-card">
+          <div class="test-quote">The Blockstories Horizon events are highly professional and they are closing a gap by bringing serious institutional players together with leading DeFi teams.</div>
+          <div class="test-avatar"><svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+          <div class="test-author">J&uuml;rgen Blumberg</div>
+          <div class="test-role">Chief Operating Officer, Centrifuge</div>
+        </div>
+        <div class="test-card">
+          <div class="test-quote">The keynote format really stands out. It's one of the few events where you're encouraged to go deep, which makes it a great platform for sharing real insight.</div>
+          <div class="test-avatar"><svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+          <div class="test-author">Dovile Silenskyte</div>
+          <div class="test-role">Director Digital Assets Research, WisdomTree</div>
+        </div>
+        <div class="test-card">
+          <div class="test-quote">I have attended two Blockstories dinners so far. While the participant mix differed each time, the quality of attendees and the depth of conversation were consistently exceptional.</div>
+          <div class="test-avatar"><svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg></div>
+          <div class="test-author">Paul Bureau</div>
+          <div class="test-role">Head of Digital Assets, Banque Delubac</div>
+        </div>
+      </div>
+    </div>
+  </div><!-- end wrap -->
+
+  <!-- ═══ SPONSOR SHOWCASE ═══ -->
+  <section class="sponsors reveal">
+    <div class="wrap">
+      <h2 class="sponsor-headline">We Partner with Category Leaders – Past Horizon Sponsors</h2>
+      <div class="sponsor-grid">
+        <!-- Row 1 -->
+        <div class="sponsor-tile"><span>Galaxy</span></div>
+        <div class="sponsor-tile"><span>Deka</span></div>
+        <div class="sponsor-tile"><span>Chainlink</span></div>
+        <div class="sponsor-tile"><span>WisdomTree</span></div>
+        <div class="sponsor-tile"><span>Solana</span></div>
+        <!-- Row 2 -->
+        <div class="sponsor-tile"><span>Kiln</span></div>
+        <div class="sponsor-tile"><span>21Shares</span></div>
+        <div class="sponsor-tile"><span>Fireblocks</span></div>
+        <div class="sponsor-tile"><span>Morpho</span></div>
+        <div class="sponsor-tile"><span>Sygnum</span></div>
+        <!-- Row 3 -->
+        <div class="sponsor-tile"><span>BitGo</span></div>
+        <div class="sponsor-tile"><span>Digital Asset</span></div>
+        <div class="sponsor-tile"><span>Centrifuge</span></div>
+        <div class="sponsor-tile"><span>Google Cloud</span></div>
+        <div class="sponsor-tile"><span>Zama</span></div>
+        <!-- Row 4 -->
+        <div class="sponsor-tile"><span>LayerZero</span></div>
+        <div class="sponsor-tile"><span>Steakhouse Financial</span></div>
+        <div class="sponsor-tile"><span>bpifrance</span></div>
+        <div class="sponsor-tile"><span>Boerse Stuttgart Digital</span></div>
+        <div class="sponsor-tile"><span>NEAR</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <!-- ═══ OUR FORMATS ═══ -->
+    <div class="section-hdr reveal">
+      <h2>Our Formats</h2>
+      <div class="section-hdr-line"></div>
+    </div>
+
+    <div class="formats-grid reveal">
+      <div class="format-card">
+        <div class="format-img"><img src="/DSC09868.jpg" alt="Horizon Summit" loading="lazy"></div>
+        <div class="format-body">
+          <div class="format-label">Format</div>
+          <div class="format-name">Summit</div>
+          <p class="format-desc">An invite-only institutional gathering, bringing together 100-130 senior decision-makers across banking, asset management and market infrastructure. The program features eight 7-minute keynote theses on emerging trends, followed by audience Q&amp;A and a networking reception over food and drinks.</p>
+        </div>
+      </div>
+      <div class="format-card">
+        <div class="format-img"><img src="/Dinner Bild.jpg" alt="Horizon Dinner" loading="lazy"></div>
+        <div class="format-body">
+          <div class="format-label">Format</div>
+          <div class="format-name">Dinner</div>
+          <p class="format-desc">An intimate dinner for 34 senior participants, with seating curated to bring together relevant peers across TradFi, DeFi and regulation. Between courses, each guest introduces themselves, creating a conversational exchange around the table.</p>
+        </div>
+      </div>
+      <div class="format-card">
+        <div class="format-img"><img src="/Webinar Bild.png" alt="Horizon Webinar" loading="lazy"></div>
+        <div class="format-body">
+          <div class="format-label">Format</div>
+          <div class="format-name">Webinar</div>
+          <p class="format-desc">A digital session for 200+ practitioners and strategy leads building digital asset products inside financial institutions. Each session features three to four case study presentations with live Q&amp;A focused on concrete implementations.</p>
+        </div>
+      </div>
+      <div class="format-card">
+        <div class="format-img"><img src="/DSC08823 (4).jpg" alt="Horizon Workshop" loading="lazy"></div>
+        <div class="format-body">
+          <div class="format-label">Format</div>
+          <div class="format-name">Workshop</div>
+          <p class="format-desc">A 60-minute deep dive led by a leading practitioner in a specific category of digital assets. The session unpacks real architectures, implementation choices, and operational considerations, followed by extended audience discussion.</p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ═══ AFTERMOVIES ═══ -->
+    <div class="aftermovies reveal">
+      <div class="section-hdr">
+        <h2>Aftermovies</h2>
+        <div class="section-hdr-line"></div>
+      </div>
+
+      <div class="aftermovies-scroll">
+        <div class="am-card">
+          <div class="am-thumb">
+            <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:rgba(255,255,255,.25)"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg>
+            <div class="am-play"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+          <div class="am-body">
+            <div class="am-series winter">Winter Series</div>
+            <div class="am-title">Horizon Series: Frankfurt</div>
+            <div class="am-meta">February 2026</div>
+          </div>
+        </div>
+
+        <div class="am-card">
+          <div class="am-thumb">
+            <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:rgba(255,255,255,.25)"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg>
+            <div class="am-play"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+          <div class="am-body">
+            <div class="am-series summer">Summer Series</div>
+            <div class="am-title">Horizon Series: Zurich</div>
+            <div class="am-meta">March 2026</div>
+          </div>
+        </div>
+
+        <div class="am-card">
+          <div class="am-thumb">
+            <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:rgba(255,255,255,.25)"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg>
+            <div class="am-play"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+          <div class="am-body">
+            <div class="am-series summer">Summer Series</div>
+            <div class="am-title">Horizon Series: Paris</div>
+            <div class="am-meta">March 2026</div>
+          </div>
+        </div>
+
+        <div class="am-card">
+          <div class="am-thumb">
+            <svg viewBox="0 0 24 24" style="width:36px;height:36px;fill:rgba(255,255,255,.25)"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-5.5z"/></svg>
+            <div class="am-play"><svg viewBox="0 0 24 24"><polygon points="8,5 20,12 8,19"/></svg></div>
+          </div>
+          <div class="am-body">
+            <div class="am-series fall">Fall Series</div>
+            <div class="am-title">Horizon Series: London</div>
+            <div class="am-meta">April 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  </div><!-- end wrap -->
+
+  <!-- ═══ BECOME A SPONSOR ═══ -->
+  <section class="sponsor-cta" id="sponsor">
+    <div class="wrap">
+      <div class="sponsor-cta-inner reveal">
+        <div class="sponsor-cta-text">
+          <div class="sponsor-cta-label">Become a Horizon Partner</div>
+          <h2>Present Your <em>Big Idea</em></h2>
+          <p class="sponsor-cta-desc">Each Horizon Series features eight category leaders who present one big idea on stage &mdash; a thesis on a market shift that matters to financial institutions. We work with every partner to craft their narrative, refine their presentation, and put the right people in the room to hear it.</p>
+
+          <div class="partner-benefits">
+            <div class="partner-benefits-label">How It Works</div>
+            <div class="partner-benefits-grid">
+              <div class="pb-item">
+                <div class="pb-icon"></div>
+                <div class="pb-text">Present a 7-minute keynote thesis at three invite-only summits across Europe</div>
+              </div>
+              <div class="pb-item">
+                <div class="pb-icon"></div>
+                <div class="pb-text">Reach 800+ pre-qualified decision-makers from banks, asset managers, and FMIs</div>
+              </div>
+              <div class="pb-item">
+                <div class="pb-icon"></div>
+                <div class="pb-text">Secure exclusive category representation &mdash; only eight partners per series</div>
+              </div>
+              <div class="pb-item">
+                <div class="pb-icon"></div>
+                <div class="pb-text">Full go-to-market support: narrative development, slide refinement, and audience curation</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="sponsor-form">
+          <h3>Get in Touch</h3>
+          <p class="sponsor-form-sub">Tell us about your category and we'll send you the full partnership deck within 24 hours.</p>
+          <form id="sponsorForm">
+            <div class="sf-row-grid">
+              <div class="sf-row">
+                <label for="sf-name">Name</label>
+                <input type="text" id="sf-name" placeholder="Your full name">
+              </div>
+              <div class="sf-row">
+                <label for="sf-email">Email</label>
+                <input type="email" id="sf-email" placeholder="work@company.com">
+              </div>
+            </div>
+            <div class="sf-row-grid">
+              <div class="sf-row">
+                <label for="sf-company">Company</label>
+                <input type="text" id="sf-company" placeholder="Company name">
+              </div>
+              <div class="sf-row">
+                <label for="sf-interest">Interested In</label>
+                <select id="sf-interest">
+                  <option value="">Select an option</option>
+                  <option value="event-sponsorship">Event Sponsorship</option>
+                  <option value="newsletter-sponsorship">Newsletter Sponsorship</option>
+                  <option value="research-partnership">Research Partnership</option>
+                  <option value="multiple">Multiple / Custom</option>
+                </select>
+              </div>
+            </div>
+            <div class="sf-row">
+              <label for="sf-message">Message</label>
+              <textarea id="sf-message" placeholder="Tell us about your goals and which events interest you most..."></textarea>
+            </div>
+            <button type="submit" class="sf-submit">Send Inquiry</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CTA BREAK ═══ -->
+  <div class="wrap">
+    <div class="cta-break reveal">
+      <div class="cta-txt">
+        <h3>Institutional Digital Asset Intelligence. <em>Delivered weekly.</em></h3>
+        <p>Join 15,000+ institutional decision-makers who rely on Blockstories for exclusive research, regulatory tracking and market intelligence.</p>
+        <div class="tagline">Independent. Editorial. Institutional-grade.</div>
+      </div>
+      <form class="cta-form" onsubmit="event.preventDefault()">
+        <div class="row">
+          <input type="email" placeholder="your@email.com">
+          <button type="submit">Subscribe</button>
+        </div>
+        <div class="cta-badges">
+          <span class="cta-badge">15,000+ subscribers</span>
+          <span class="cta-badge">Trusted by Top 20 EU Banks</span>
+          <span class="cta-badge">Independent editorial</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <Footer />
+</Layout>
+
+<style>
+/* ═══ EVENTS HERO ═══ */
+.events-hero{background:var(--surface-dark);position:relative;overflow:hidden;padding:200px 0 64px}
+.hero-video-bg{position:absolute;inset:0;z-index:0}
+.hero-video-bg video{width:100%;height:100%;object-fit:cover;object-position:center 20%;opacity:.12}
+.events-hero::before{content:'';position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(18,43,66,.5) 0%,rgba(18,43,66,.3) 40%,rgba(18,43,66,.7) 100%);pointer-events:none}
+.events-hero::after{content:'';position:absolute;inset:0;z-index:0;background:radial-gradient(ellipse at 70% 30%,rgba(90,138,134,.15) 0%,transparent 60%);pointer-events:none}
+.hero-inner{position:relative;z-index:1;display:flex;flex-direction:column;gap:20px}
+.hero-top{display:flex;justify-content:space-between;align-items:flex-start}
+.hero-content{max-width:680px}
+.hero-stats-inline{display:flex;gap:12px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.1);padding-top:20px;margin-top:4px}
+.hero-stat-pill{font-family:var(--mono);font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5);padding:6px 16px;border:1px solid rgba(255,255,255,.12);border-radius:3px;background:rgba(255,255,255,.04)}
+.hero-label{font-family:var(--mono);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.hero-label::before{content:'';width:24px;height:1px;background:var(--accent)}
+.events-hero h1{font-family:var(--display);font-size:2.8rem;font-weight:700;color:#fff;line-height:1.15;letter-spacing:-.02em;margin-bottom:36px}
+.events-hero h1 em{font-style:italic;font-weight:400;color:var(--accent)}
+.hero-sub{font-family:var(--body);font-size:1.05rem;color:rgba(255,255,255,.55);line-height:1.65;max-width:560px;margin-bottom:28px}
+.hero-ctas{display:flex;gap:16px;align-items:center;margin-bottom:24px}
+.btn-outline{display:inline-block;font-family:var(--sans);font-size:.85rem;font-weight:500;padding:14px 32px;background:rgba(255,255,245,.92);color:var(--text-1);border:none;border-radius:3px;cursor:pointer;transition:all var(--ease)}
+.btn-outline:hover{background:#fff}
+.btn-accent{display:inline-block;font-family:var(--sans);font-size:.85rem;font-weight:500;padding:14px 32px;background:none;color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.3);border-radius:3px;cursor:pointer;transition:all var(--ease)}
+.btn-accent:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.5);color:#fff}
+.hero-formats{display:flex;gap:8px;align-items:center}
+.hero-format-badge{font-family:var(--mono);font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:4px 10px;border:1px solid rgba(255,255,255,.1);border-radius:2px}
+
+/* ═══ SECTION HEADERS ═══ */
+.section-hdr{padding:72px 0 28px;display:flex;align-items:baseline;justify-content:space-between;gap:24px}
+.section-hdr h2{font-family:var(--display);font-size:1.6rem;font-weight:700;letter-spacing:-.01em;flex-shrink:0}
+.section-hdr-line{flex:1;height:1px;background:var(--border)}
+.invite-note{font-family:var(--mono);font-size:.6rem;letter-spacing:.06em;color:var(--text-3);margin-bottom:28px}
+
+/* ═══ MONTH TABS ═══ */
+.ev-filters{display:flex;gap:6px;margin-bottom:36px;flex-wrap:wrap}
+.ev-filter{font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:9px 22px;border-radius:3px;cursor:pointer;color:var(--text-3);background:none;border:1px solid transparent;transition:all var(--ease)}
+.ev-filter:hover{color:var(--text-2);border-color:var(--border)}
+.ev-filter.on{background:var(--text-1);color:var(--bg);border-color:var(--text-1)}
+.ev-card.ev-filtered{display:none}
+.ev-card.ev-hidden{display:none}
+.view-more-wrap{text-align:center;margin-top:var(--sp-xl)}
+.view-more-btn{display:inline-block;padding:12px 36px;border:1px solid var(--border);border-radius:6px;background:var(--bg);font-family:var(--sans);font-size:.85rem;font-weight:500;color:var(--text-2);cursor:pointer;transition:all var(--ease)}
+.view-more-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+
+/* ═══ EVENT CARDS ═══ */
+.events-list{display:flex;flex-direction:column;gap:0}
+.ev-card{display:grid;grid-template-columns:80px 96px 1fr auto;gap:20px;padding:28px 0;border-bottom:1px solid var(--border-light);transition:background var(--ease)}
+.ev-thumb{width:96px;height:96px;border-radius:6px;background:var(--surface-warm);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.ev-thumb img{width:100%;height:100%;object-fit:cover}
+.ev-thumb svg{width:28px;height:28px;fill:var(--ink-faint);opacity:.45}
+.ev-card:nth-child(odd){background:var(--surface)}
+.ev-card:nth-child(even){background:var(--bg)}
+.ev-card:hover{opacity:.92}
+.ev-card:first-child{border-top:1px solid var(--border)}
+.ev-card.bs{border-left:3px solid var(--accent);padding-left:17px;margin-left:-20px;padding-right:0}
+.ev-card.bs:nth-child(odd){background:var(--surface)}
+.ev-card.bs:nth-child(even){background:var(--bg)}
+.ev-date{text-align:center;padding-top:2px}
+.ev-day{font-family:var(--display);font-size:2rem;font-weight:700;line-height:1;color:var(--text-1)}
+.ev-month{font-family:var(--mono);font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-top:2px}
+.ev-card.bs .ev-day{color:var(--accent)}
+.ev-body h3{font-family:var(--body);font-size:1rem;font-weight:500;line-height:1.4;margin-bottom:6px}
+.ev-badges{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.ev-type{font-family:var(--mono);font-size:.48rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:2px;background:var(--surface);border:1px solid var(--border);color:var(--text-3)}
+.ev-card.bs .ev-type{background:rgba(90,138,134,.1);border-color:rgba(90,138,134,.2);color:var(--accent)}
+.ev-series{font-family:var(--mono);font-size:.48rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:2px}
+.ev-series.winter{background:rgba(138,109,90,.1);color:#8A6D5A;border:1px solid rgba(138,109,90,.2)}
+.ev-series.summer{background:rgba(90,138,134,.1);color:var(--accent);border:1px solid rgba(90,138,134,.2)}
+.ev-series.fall{background:rgba(30,75,122,.1);color:#1E4B7A;border:1px solid rgba(30,75,122,.2)}
+.ev-meta{font-size:.78rem;color:var(--text-3);margin-bottom:6px;display:flex;gap:16px;align-items:center}
+.ev-meta-dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--text-3);margin-right:6px;vertical-align:middle}
+.ev-desc{font-size:.82rem;color:var(--text-2);line-height:1.55}
+.ev-action{display:flex;align-items:flex-start;padding-top:4px;flex-shrink:0;padding-right:12px}
+.ev-btn{font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:8px 20px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:3px;cursor:pointer;transition:all var(--ease);white-space:nowrap}
+.ev-btn:hover{background:var(--text-1);color:var(--bg);border-color:var(--text-1)}
+.ev-card.bs .ev-btn{border-color:var(--accent);color:var(--accent)}
+.ev-card.bs .ev-btn:hover{background:var(--accent);color:#fff}
+
+/* ═══ HORIZON SERIES SHOWCASE ═══ */
+.horizon{background:var(--surface);padding:80px 0;margin-top:64px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.horizon-inner{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+.horizon-text h2{font-family:var(--display);font-size:1.8rem;font-weight:700;line-height:1.2;margin-bottom:8px;letter-spacing:-.01em}
+.horizon-text h2 em{font-style:italic;font-weight:400;color:var(--accent)}
+.horizon-label{font-family:var(--mono);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.horizon-label::before{content:'';width:20px;height:1px;background:var(--accent)}
+.horizon-desc{font-family:var(--body);font-size:.92rem;color:var(--text-2);line-height:1.65;margin-bottom:28px}
+.horizon-stats{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.h-stat{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:18px 16px;text-align:center}
+.h-stat-val{font-family:var(--display);font-size:1.5rem;font-weight:700;color:var(--text-1);line-height:1}
+.h-stat-lbl{font-family:var(--mono);font-size:.48rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-top:4px}
+.gallery-video{border-radius:4px;overflow:hidden;align-self:center}
+.gallery-video video{display:block;width:100%;height:auto}
+.gv-caption{padding:14px 16px;background:var(--surface-dark)}
+.gv-caption-eye{font-family:var(--mono);font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:4px}
+.gv-caption-title{font-family:var(--display);font-size:1rem;font-weight:600;color:#fff;line-height:1.3;letter-spacing:-.01em}
+.gv-caption-title em{font-style:italic;font-weight:400;color:var(--accent)}
+
+/* ═══ THEMES TICKER ═══ */
+.themes-ticker{background:var(--surface-dark);padding:56px 0 44px;overflow:hidden}
+.themes-ticker-header{text-align:center;margin-bottom:32px}
+.themes-ticker-label{font-family:var(--mono);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px;justify-content:center}
+.themes-ticker-label::before,.themes-ticker-label::after{content:'';width:20px;height:1px;background:var(--accent)}
+.themes-ticker-title{font-family:var(--display);font-size:1.5rem;font-weight:700;color:#fff;letter-spacing:-.01em}
+.themes-ticker-title em{font-style:italic;font-weight:400;color:var(--accent)}
+.ticker-track{display:flex;width:max-content;animation:tickerScroll 28s linear infinite}
+.ticker-track:hover{animation-play-state:paused}
+.ticker-item{font-family:var(--display);font-size:1.1rem;font-weight:600;color:rgba(255,255,255,.45);white-space:nowrap;padding:0 20px;display:flex;align-items:center;gap:20px;transition:color .3s ease}
+.ticker-item:hover{color:rgba(255,255,255,.9)}
+.ticker-sep{width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:.5;flex-shrink:0}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ═══ TESTIMONIALS ═══ */
+.testimonials{padding:72px 0;border-bottom:1px solid var(--border)}
+.test-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
+.test-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:24px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.test-quote{font-family:var(--body);font-size:.88rem;color:var(--text-2);line-height:1.6;font-style:italic;margin-bottom:16px}
+.test-quote::before{content:'\201C';font-family:var(--display);font-size:1.8rem;color:var(--accent);line-height:0;vertical-align:-.35em;margin-right:2px}
+.test-avatar{width:56px;height:56px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;margin:0 auto 12px}
+.test-avatar svg{width:28px;height:28px;fill:var(--accent);opacity:.7}
+.test-author{font-size:.75rem;font-weight:600;color:var(--text-1)}
+.test-role{font-family:var(--mono);font-size:.5rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-top:2px}
+
+/* ═══ OUR FORMATS ═══ */
+.formats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:28px}
+.format-card{border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:all var(--ease)}
+.format-card:hover{border-color:var(--text-3)}
+.format-img{width:100%;aspect-ratio:16/9;background:var(--surface-warm);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.format-img img{width:100%;height:100%;object-fit:cover}
+.format-img svg{width:36px;height:36px;fill:var(--ink-faint);opacity:.35}
+.format-body{padding:24px}
+.format-label{font-family:var(--mono);font-size:.5rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.format-name{font-family:var(--display);font-size:1.2rem;font-weight:600;color:var(--text-1);margin-bottom:10px}
+.format-desc{font-family:var(--body);font-size:.85rem;color:var(--text-2);line-height:1.65}
+
+/* ═══ AFTERMOVIES ═══ */
+.aftermovies{padding:48px 0 56px;border-bottom:1px solid var(--border)}
+.aftermovies-scroll{display:flex;gap:24px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.aftermovies-scroll::-webkit-scrollbar{height:4px}
+.aftermovies-scroll::-webkit-scrollbar-track{background:transparent}
+.aftermovies-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.am-card{flex:0 0 320px;scroll-snap-align:start;border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:all var(--ease);cursor:pointer}
+.am-card:hover{border-color:var(--text-3)}
+.am-thumb{position:relative;width:100%;aspect-ratio:16/9;background:var(--surface-dark);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.am-thumb img{width:100%;height:100%;object-fit:cover;opacity:.7;transition:opacity var(--ease)}
+.am-card:hover .am-thumb img{opacity:.85}
+.am-play{position:absolute;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.92);display:flex;align-items:center;justify-content:center;transition:transform var(--ease),background var(--ease);z-index:1}
+.am-play svg{width:20px;height:20px;fill:var(--surface-dark);margin-left:2px}
+.am-card:hover .am-play{transform:scale(1.08);background:#fff}
+.am-body{padding:16px 18px}
+.am-series{font-family:var(--mono);font-size:.48rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.am-series.winter{color:#8A6D5A}
+.am-series.summer{color:var(--accent)}
+.am-series.fall{color:#1E4B7A}
+.am-title{font-family:var(--display);font-size:1rem;font-weight:600;color:var(--text-1);margin-bottom:4px}
+.am-meta{font-family:var(--mono);font-size:.5rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+
+/* ═══ SPONSOR SHOWCASE ═══ */
+.sponsors{padding:72px 0 80px;background:var(--surface);border-top:none;border-bottom:1px solid var(--border)}
+.sponsor-headline{font-family:var(--display);font-size:1.5rem;font-weight:700;font-style:italic;color:var(--text-1);margin-bottom:48px;letter-spacing:-.01em;text-align:center}
+.sponsor-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:32px 48px}
+.sponsor-tile{display:flex;align-items:center;justify-content:center;min-height:48px;transition:opacity var(--ease)}
+.sponsor-tile:hover{opacity:.7}
+.sponsor-tile span{font-family:var(--sans);font-size:.92rem;font-weight:600;color:var(--text-3);letter-spacing:.01em;white-space:nowrap}
+
+/* ═══ BECOME A SPONSOR ═══ */
+.sponsor-cta{background:var(--surface-dark);padding:80px 0}
+.sponsor-cta-inner{display:grid;grid-template-columns:1fr 420px;gap:56px;align-items:start}
+.sponsor-cta-text h2{font-family:var(--display);font-size:1.8rem;font-weight:700;color:#fff;line-height:1.2;margin-bottom:8px}
+.sponsor-cta-text h2 em{font-style:italic;font-weight:400;color:var(--accent)}
+.sponsor-cta-label{font-family:var(--mono);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sponsor-cta-label::before{content:'';width:20px;height:1px;background:var(--accent)}
+.sponsor-cta-desc{font-family:var(--body);font-size:.88rem;color:rgba(255,255,255,.55);line-height:1.65;margin-bottom:28px}
+.partner-benefits{margin-bottom:32px}
+.partner-benefits-label{font-family:var(--mono);font-size:.55rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.partner-benefits-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pb-item{display:flex;align-items:center;gap:10px;padding:12px 16px;border:1px solid rgba(255,255,255,.08);border-radius:4px;background:rgba(255,255,255,.03)}
+.pb-icon{width:16px;height:1px;background:var(--accent);flex-shrink:0;margin-top:2px}
+.pb-text{font-size:.75rem;color:rgba(255,255,255,.55);line-height:1.5}
+.sponsor-side-stats{display:flex;gap:24px;margin-top:28px}
+.s-stat{text-align:center}
+.s-stat-val{font-family:var(--display);font-size:1.3rem;font-weight:700;color:#fff;line-height:1}
+.s-stat-lbl{font-family:var(--mono);font-size:.45rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:4px}
+
+/* ═══ SPONSOR FORM ═══ */
+.sponsor-form{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:28px}
+.sponsor-form h3{font-family:var(--display);font-size:1.1rem;font-weight:600;color:#fff;margin-bottom:4px}
+.sponsor-form-sub{font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:20px}
+.sf-row{margin-bottom:12px}
+.sf-row label{font-family:var(--mono);font-size:.5rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);display:block;margin-bottom:4px}
+.sf-row input,.sf-row select,.sf-row textarea{width:100%;font-family:var(--sans);font-size:.78rem;padding:10px 14px;border:1px solid rgba(255,255,255,.12);border-radius:3px;background:rgba(255,255,255,.05);color:#fff;outline:none;transition:border-color var(--ease)}
+.sf-row input:focus,.sf-row select:focus,.sf-row textarea:focus{border-color:rgba(255,255,255,.3)}
+.sf-row input::placeholder,.sf-row textarea::placeholder{color:rgba(255,255,255,.25)}
+.sf-row select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='rgba(255,255,255,0.3)' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.sf-row select option{background:var(--surface-dark);color:#fff}
+.sf-row textarea{resize:vertical;min-height:80px}
+.sf-row-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sf-submit{width:100%;font-family:var(--sans);font-size:.78rem;font-weight:500;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:3px;cursor:pointer;transition:all var(--ease);margin-top:4px}
+.sf-submit:hover{background:var(--accent-hover)}
+
+/* ═══ CTA BREAK ═══ */
+.cta-break{
+  background:var(--surface-dark);padding:52px 48px;border-radius:6px;margin:64px 0;
+  display:flex;align-items:center;gap:48px;
+}
+.cta-txt{flex:1}
+.cta-txt h3{font-family:var(--display);font-size:1.5rem;font-weight:700;color:#fff;line-height:1.25;margin-bottom:8px}
+.cta-txt h3 em{font-style:italic;font-weight:400;color:var(--accent)}
+.cta-txt p{font-size:.84rem;color:rgba(255,255,255,.55);line-height:1.6;max-width:440px}
+.cta-txt .tagline{font-family:var(--mono);font-size:.55rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:12px}
+.cta-form{flex-shrink:0}
+.cta-form .row{display:flex;gap:6px}
+.cta-form input{font-family:var(--sans);font-size:.78rem;padding:11px 14px;width:240px;border:1px solid rgba(255,255,255,.15);border-radius:3px;background:rgba(255,255,255,.06);color:#fff;outline:none;transition:border-color var(--ease)}
+.cta-form input:focus{border-color:rgba(255,255,255,.35)}
+.cta-form input::placeholder{color:rgba(255,255,255,.3)}
+.cta-form button{font-family:var(--sans);font-size:.78rem;font-weight:500;padding:11px 22px;background:var(--accent);color:#fff;border:none;border-radius:3px;cursor:pointer;transition:opacity var(--ease)}
+.cta-form button:hover{opacity:.85}
+.cta-badges{display:flex;gap:16px;margin-top:8px}
+.cta-badge{font-family:var(--mono);font-size:.45rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:5px}
+.cta-badge::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0}
+
+/* ═══ ANIMATIONS ═══ */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:1024px){
+  .hero-top{flex-direction:column;gap:24px}
+  .events-hero h1{font-size:2.1rem}
+  .hero-stat-val{font-size:1.3rem}
+  .horizon-inner{grid-template-columns:1fr}
+  .test-grid{grid-template-columns:1fr}
+  .formats-grid{grid-template-columns:1fr 1fr}
+  .am-card{flex:0 0 280px}
+  .sponsor-grid{grid-template-columns:repeat(4,1fr)}
+  .sponsor-cta-inner{grid-template-columns:1fr}
+  .partner-benefits-grid{grid-template-columns:1fr}
+  .cta-break{flex-direction:column;text-align:left;padding:32px 28px}
+}
+@media(max-width:640px){
+  .wrap{padding:0 20px}
+  .nav{display:none}
+  .events-hero{padding:120px 0 48px}
+  .events-hero h1{font-size:1.6rem}
+  .hero-stat-val{font-size:1.3rem}
+  .hero-ctas{flex-direction:column;align-items:stretch;text-align:center}
+  .hero-formats{flex-wrap:wrap}
+  .ev-card{grid-template-columns:60px 72px 1fr;gap:12px}
+  .ev-thumb{width:72px;height:72px}
+  .ev-action{display:none}
+  .horizon-stats{grid-template-columns:1fr 1fr}
+  .formats-grid{grid-template-columns:1fr}
+  .am-card{flex:0 0 260px}
+  .sponsor-grid{grid-template-columns:repeat(3,1fr)}
+  .sf-row-grid{grid-template-columns:1fr}
+  .sponsor-side-stats{flex-wrap:wrap;gap:16px}
+  .cta-form .row{flex-direction:column}
+  .cta-form input{width:100%}
+}
+</style>
+
+<script>
+// ═══ Events Filter + Preview ═══
+(function(){
+  const cards=document.querySelectorAll('.ev-card');
+  const filters=document.getElementById('evFilters');
+  const btn=document.getElementById('viewMoreBtn');
+  const wrap=document.getElementById('viewMoreWrap');
+  if(!cards.length||!filters)return;
+
+  const MAX_VISIBLE=5;
+  let activeFilter='all';
+  let expanded=false;
+
+  function applyView(){
+    let visibleCount=0;
+    cards.forEach(c=>{
+      const type=c.dataset.type||'';
+      const matchesFilter=activeFilter==='all'||type===activeFilter;
+      c.classList.toggle('ev-filtered',!matchesFilter);
+      if(matchesFilter){
+        visibleCount++;
+        c.classList.toggle('ev-hidden',!expanded&&visibleCount>MAX_VISIBLE);
+      }else{
+        c.classList.remove('ev-hidden');
+      }
+    });
+    const totalVisible=Array.from(cards).filter(c=>!c.classList.contains('ev-filtered')).length;
+    if(wrap){
+      wrap.style.display=(!expanded&&totalVisible>MAX_VISIBLE)?'':'none';
+    }
+  }
+
+  filters.querySelectorAll('.ev-filter').forEach(f=>{
+    f.addEventListener('click',()=>{
+      filters.querySelectorAll('.ev-filter').forEach(b=>b.classList.remove('on'));
+      f.classList.add('on');
+      activeFilter=f.dataset.filter;
+      expanded=false;
+      applyView();
+    });
+  });
+
+  if(btn){
+    btn.addEventListener('click',()=>{
+      expanded=true;
+      applyView();
+    });
+  }
+
+  applyView();
+})();
+
+// ═══ Sponsor Form ═══
+(function(){
+  const form=document.getElementById('sponsorForm');
+  if(!form)return;
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    const btn=form.querySelector('.sf-submit');
+    const orig=btn.textContent;
+    btn.textContent='Inquiry Sent!';
+    btn.style.background='var(--green)';
+    setTimeout(()=>{btn.textContent=orig;btn.style.background=''},3000);
+  });
+})();
+
+// ═══ Scroll Reveal ═══
+const observer=new IntersectionObserver((entries)=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+</script>
