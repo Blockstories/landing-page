@@ -474,7 +474,7 @@ function formatTimeframe(timeframeString?: string): string {
         <p>Join 15,000+ institutional decision-makers who rely on Blockstories for exclusive research, regulatory tracking and market intelligence.</p>
         <div class="tagline">Independent. Editorial. Institutional-grade.</div>
       </div>
-      <form class="cta-form" onsubmit="event.preventDefault()">
+      <form class="cta-form" data-form-id="events_cta">
         <div class="row">
           <input type="email" placeholder="your@email.com">
           <button type="submit">Subscribe</button>
@@ -489,6 +489,35 @@ function formatTimeframe(timeframeString?: string): string {
   </div>
 
   <Footer />
+
+  <!-- ═══ Subscription Popup ═══ -->
+  <div id="subPopup" class="news-popup" style="display:none;">
+    <div class="news-popup__overlay"></div>
+    <div class="news-popup__content" style="min-width:420px;max-width:480px;">
+      <button class="news-popup__close" id="subPopupClose" aria-label="Close">&times;</button>
+      <h4 class="news-popup__title">Complete Your Subscription</h4>
+      <p class="news-popup__subtitle">Tell us a bit about you so we can tailor insights, events, and updates to your role.</p>
+      <form id="subPopupForm" class="sub-popup__form">
+        <div class="sub-popup__field">
+          <label for="subEmail">Email</label>
+          <input type="email" id="subEmail" name="email" required readonly style="background:var(--surface-warm);color:var(--text-2);">
+        </div>
+        <div class="sub-popup__field">
+          <label for="subRole">Role</label>
+          <input type="text" id="subRole" name="role" placeholder="e.g., Portfolio Manager">
+        </div>
+        <div class="sub-popup__field">
+          <label for="subCompany">Company <span class="required">*</span></label>
+          <input type="text" id="subCompany" name="company" placeholder="Your company name" required>
+        </div>
+        <div class="sub-popup__field">
+          <label for="subLocation">Location</label>
+          <input type="text" id="subLocation" name="location" placeholder="e.g., London, UK">
+        </div>
+        <button type="submit" class="sub-popup__submit">Subscribe</button>
+      </form>
+    </div>
+  </div>
 </Layout>
 
 <style>
@@ -709,6 +738,27 @@ function formatTimeframe(timeframeString?: string): string {
 .cta-badge{font-family:var(--mono);font-size:.45rem;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.3);display:flex;align-items:center;gap:5px}
 .cta-badge::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent);flex-shrink:0}
 
+/* ═══ SUBSCRIPTION POPUP ═══ */
+.news-popup{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center}
+.news-popup__overlay{position:absolute;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(8px);animation:fadeIn 0.2s ease}
+.news-popup__content{position:relative;background:linear-gradient(145deg,var(--surface) 0%,var(--surface-warm) 100%);border:1px solid var(--border);border-radius:16px;padding:32px 36px;min-width:380px;max-width:90vw;box-shadow:0 25px 80px rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.15);animation:slideUp 0.3s cubic-bezier(0.16,1,0.3,1)}
+.news-popup__close{position:absolute;top:16px;right:20px;background:none;border:none;font-size:1.75rem;color:var(--text-3);cursor:pointer;padding:0;line-height:1;transition:all 0.2s ease;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.news-popup__close:hover{color:var(--text-1);background:var(--surface-warm);transform:rotate(90deg)}
+.news-popup__title{font-family:var(--serif);font-size:1.35rem;font-weight:400;margin-bottom:8px;color:var(--text-1);letter-spacing:-0.02em}
+.news-popup__subtitle{font-size:0.85rem;color:var(--text-3);margin-bottom:24px}
+.sub-popup__form{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.sub-popup__field{display:flex;flex-direction:column;gap:6px}
+.sub-popup__field label{font-family:var(--sans);font-size:0.75rem;font-weight:500;color:var(--text-2);text-transform:uppercase;letter-spacing:0.04em}
+.sub-popup__field input{font-family:var(--sans);font-size:0.9rem;padding:12px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text-1);outline:none;transition:all 0.2s ease}
+.sub-popup__field input:focus{border-color:var(--accent);background:var(--surface-warm)}
+.sub-popup__field input::placeholder{color:var(--text-3);opacity:0.6}
+.sub-popup__submit{font-family:var(--sans);font-size:0.85rem;font-weight:600;padding:14px 24px;background:var(--accent);color:var(--surface-dark);border:none;border-radius:8px;cursor:pointer;transition:all 0.2s ease;margin-top:8px}
+.sub-popup__submit:hover{opacity:0.9;transform:translateY(-1px)}
+.sub-popup__submit:disabled{opacity:0.6;cursor:not-allowed;transform:none}
+.required{color:var(--accent)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+
 /* ═══ ANIMATIONS ═══ */
 .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
 .reveal.visible{opacity:1;transform:translateY(0)}
@@ -750,6 +800,11 @@ function formatTimeframe(timeframeString?: string): string {
 </style>
 
 <script>
+import { initSubscriptionForms } from '../scripts/subscription.ts';
+
+document.addEventListener('DOMContentLoaded', () => {
+  initSubscriptionForms();
+});
 // ═══ Events Filter + Preview ═══
 (function(){
   const cards=document.querySelectorAll('.ev-card');

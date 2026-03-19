@@ -28,6 +28,7 @@ const { activePage } = Astro.props;
       <div class="masthead-right">
         <nav>
           <ul class="nav">
+            <li><a href="/" class={activePage === 'home' ? 'active' : ''}>Home</a></li>
             <li><a href="/news" class={activePage === 'news' ? 'active' : ''}>News</a></li>
             <li><a href="/briefings" class={activePage === 'briefings' ? 'active' : ''}>Briefings</a></li>
             <li><a href="/data" class={activePage === 'data' ? 'active' : ''}>Data</a></li>
