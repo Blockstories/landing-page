@@ -180,7 +180,7 @@ import { getTrending } from '../lib/newsUtils.js';
 In the frontmatter, after the closing `}` of the second `if (!isBuildTime)` block (the market snapshot fetch, around line 67), add:
 
 ```ts
-const trendingItems = getTrending(newsItems);
+const trendingItems = isBuildTime ? [] : getTrending(newsItems);
 ```
 
 - [ ] **Step 3: Replace the hardcoded trending list**
