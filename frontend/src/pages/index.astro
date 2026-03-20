@@ -3,7 +3,8 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { getArticlesByPublication, getArticlesByTags, getArticleByPublicationIdAndPostId } from '../../../backend/db/queries.js';
-import { getLatestNews, getNewsForThemes, MappedRecord } from '../../../backend/services/softrService.js';
+import { getLatestNews, getNewsForThemes, type MappedRecord } from '../../../backend/services/softrService.js';
+import { getTrending } from '../lib/newsUtils.js';
 import type { NewsItem } from '../types/content.js';
 import { fetchMarketSnapshot, formatLargeUsd, formatPercent, formatBtcPrice } from '../lib/marketData.js';
 import type { MarketSnapshot } from '../lib/marketData.js';
@@ -118,6 +119,7 @@ const MARKET_FLOW_THEMES = ['tokenization', 'stablecoins', 'regulation', 'market
 
 let latestNewsItems: NewsItem[] = [];
 let newsByTheme = new Map<string, NewsItem[]>();
+let rawLatestItems: MappedRecord[] = [];
 
 function extractUrls(record: MappedRecord): string[] {
   const urlField = record.fields['links'];
@@ -168,9 +170,11 @@ if (!isBuildTime) {
   try {
     // Fetch latest news (for "Latest" tab) and themed news in parallel
     const [latestResult, themedResults] = await Promise.all([
-      getLatestNews({ paging: { limit: 10 } }),
+      getLatestNews({ paging: { limit: 50 } }),
       getNewsForThemes(MARKET_FLOW_THEMES, { paging: { limit: 10 } }),
     ]);
+
+    rawLatestItems = latestResult.data;
 
     // Process latest news
     latestNewsItems = latestResult.data
@@ -198,6 +202,8 @@ if (!isBuildTime) {
     console.error("[index.astro] Failed to fetch news:", error);
   }
 }
+
+const trendingItems = getTrending(rawLatestItems);
 
 const _nullMarket: MarketSnapshot = {
   btcPrice: null, btcChange24h: null, totalMarketCap: null,
@@ -1282,11 +1288,28 @@ function getNewsThemeClass(theme: string): string {
         <div class="sidebar-sec">
           <h4>Trending This Week</h4>
           <ul class="trending">
-            <li><span class="tn">01</span>MiCA enforcement timeline</li>
-            <li><span class="tn">02</span>Tokenized treasuries AUM record</li>
-            <li><span class="tn">03</span>ECB digital euro Phase 2</li>
-            <li><span class="tn">04</span>Stablecoin reserve transparency</li>
-            <li><span class="tn">05</span>Bank custody licensing Europe</li>
+            {trendingItems.length > 0 ? trendingItems.map((item, i) => {
+              const title = String(item.fields?.title || '');
+              const links = item.fields?.links;
+              const urls = Array.isArray(links)
+                ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+                : typeof links === 'string' && links ? [links] : [];
+              const publisherField = item.fields?.publisher;
+              const sources = Array.isArray(publisherField)
+                ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+                : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+              return (
+                <li
+                  class="news-item"
+                  data-sources={JSON.stringify(sources.length ? sources : ['News'])}
+                  data-urls={JSON.stringify(urls)}
+                >
+                  <span class="tn">{String(i + 1).padStart(2, '0')}</span>{title}
+                </li>
+              );
+            }) : (
+              <li style="color:var(--text-3);font-size:.75rem">No trending items this week.</li>
+            )}
           </ul>
         </div>
       </aside>
@@ -1747,6 +1770,34 @@ if(document.querySelector('[data-briefing] h2')?.textContent?.includes('No brief
   popupClose?.addEventListener('click', closePopup);
   popupOverlay?.addEventListener('click', closePopup);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); });
+
+  // Trending sidebar popup — uses .news-item class (different from .marketflow-item)
+  const trendingList = document.querySelector('.trending');
+  if (trendingList) {
+    trendingList.addEventListener('click', (e) => {
+      const item = (e.target as HTMLElement).closest('.news-item') as HTMLElement | null;
+      if (!item) return;
+      e.preventDefault();
+
+      const sourcesStr = item.getAttribute('data-sources');
+      const urlsStr = item.getAttribute('data-urls');
+      if (!sourcesStr || !urlsStr) return;
+
+      let sources: string[], urls: string[];
+      try {
+        sources = JSON.parse(sourcesStr);
+        urls = JSON.parse(urlsStr);
+      } catch { return; }
+
+      if (!Array.isArray(urls) || urls.length === 0) return;
+
+      if (urls.length === 1) {
+        window.open(urls[0], '_blank', 'noopener,noreferrer');
+      } else {
+        openPopup(sources, urls);
+      }
+    });
+  }
 
   // Handle news link clicks - use event delegation on the list
   const marketFlowList = document.querySelector('.marketflow-list');
