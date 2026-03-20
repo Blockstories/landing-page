@@ -5,6 +5,8 @@ import Footer from '../components/Footer.astro';
 import { getArticlesByPublication, getArticlesByTags, getArticleByPublicationIdAndPostId } from '../../../backend/db/queries.js';
 import { getLatestNews, getNewsForThemes, MappedRecord } from '../../../backend/services/softrService.js';
 import type { NewsItem } from '../types/content.js';
+import { fetchMarketSnapshot, formatLargeUsd, formatPercent, formatBtcPrice } from '../lib/marketData.js';
+import type { MarketSnapshot } from '../lib/marketData.js';
 
 const pageStart = performance.now();
 console.log(`[index.astro] Starting render`);
@@ -194,6 +196,21 @@ if (!isBuildTime) {
     console.log(`[index.astro] Fetched ${latestNewsItems.length} latest news items and ${newsByTheme.size} themed categories`);
   } catch (error) {
     console.error("[index.astro] Failed to fetch news:", error);
+  }
+}
+
+const _nullMarket: MarketSnapshot = {
+  btcPrice: null, btcChange24h: null, totalMarketCap: null,
+  marketCapChange24h: null, btcDominance: null, stablecoinMarketCap: null,
+  fearGreedValue: null, fearGreedLabel: null, btcPriceHistory: null,
+};
+let market: MarketSnapshot = _nullMarket;
+
+if (!isBuildTime) {
+  try {
+    market = await fetchMarketSnapshot();
+  } catch (e) {
+    console.error('[index.astro] Failed to fetch market data:', e);
   }
 }
 
@@ -1233,11 +1250,34 @@ function getNewsThemeClass(theme: string): string {
       <aside class="sidebar">
         <div class="sidebar-sec">
           <h4>Market Snapshot</h4>
-          <div class="ss"><span class="ss-lbl">BTC Dominance</span><span class="ss-val">54.2%</span></div>
-          <div class="ss"><span class="ss-lbl">Total Crypto MCap</span><span class="ss-val">$3.42T</span></div>
-          <div class="ss"><span class="ss-lbl">DeFi TVL</span><span class="ss-val">$98.4B <span class="ss-chg" style="color:var(--green)">+2.1%</span></span></div>
-          <div class="ss"><span class="ss-lbl">Stablecoin MCap</span><span class="ss-val">$218B</span></div>
-          <div class="ss"><span class="ss-lbl">Fear &amp; Greed</span><span class="ss-val">72 <span class="ss-chg" style="color:var(--text-3)">Greed</span></span></div>
+          <div class="ss">
+            <span class="ss-lbl">BTC Dominance</span>
+            <span class="ss-val">{market.btcDominance != null ? market.btcDominance.toFixed(1) + '%' : '—'}</span>
+          </div>
+          <div class="ss">
+            <span class="ss-lbl">Total Crypto MCap</span>
+            <span class="ss-val">{formatLargeUsd(market.totalMarketCap)}{market.marketCapChange24h != null && (
+              <span class="ss-chg" style={`color:${market.marketCapChange24h > 0 ? 'var(--green)' : market.marketCapChange24h < 0 ? 'var(--red)' : 'var(--text-3)'}`}>
+                {formatPercent(market.marketCapChange24h)}
+              </span>
+            )}</span>
+          </div>
+          <div class="ss">
+            <span class="ss-lbl">BTC Price</span>
+            <span class="ss-val">{formatBtcPrice(market.btcPrice)}{market.btcChange24h != null && (
+              <span class="ss-chg" style={`color:${market.btcChange24h > 0 ? 'var(--green)' : market.btcChange24h < 0 ? 'var(--red)' : 'var(--text-3)'}`}>
+                {formatPercent(market.btcChange24h)}
+              </span>
+            )}</span>
+          </div>
+          <div class="ss">
+            <span class="ss-lbl">Stablecoin MCap</span>
+            <span class="ss-val">{formatLargeUsd(market.stablecoinMarketCap)}</span>
+          </div>
+          <div class="ss">
+            <span class="ss-lbl">Fear &amp; Greed</span>
+            <span class="ss-val">{market.fearGreedValue ?? '—'} <span class="ss-chg" style="color:var(--text-3)">{market.fearGreedLabel ?? '—'}</span></span>
+          </div>
         </div>
         <div class="sidebar-sec">
           <h4>Trending This Week</h4>
