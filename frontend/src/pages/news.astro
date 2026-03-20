@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { getLatestNews, getNewsForThemes, type MappedRecord } from '../../../backend/services/softrService.js';
+import { getTrending } from '../lib/newsUtils.js';
 import { fetchMarketSnapshot, formatLargeUsd, formatPercent, formatBtcPrice, pricesToSvgPath } from '../lib/marketData.js';
 import type { MarketSnapshot } from '../lib/marketData.js';
 
@@ -66,6 +67,8 @@ if (!isBuildTime) {
     console.error('[news.astro] Failed to fetch market data:', e);
   }
 }
+
+const trendingItems = isBuildTime ? [] : getTrending(newsItems);
 
 const btcSparkline = pricesToSvgPath(market.btcPriceHistory ?? []);
 const btcHistory = market.btcPriceHistory ?? [];
@@ -882,13 +885,28 @@ function getFilterCategory(theme: string): string {
       <div class="sidebar-sec">
         <h4>Trending This Week</h4>
         <ul class="trending">
-          <li><span class="tn">01</span>ECB digital euro Phase 3</li>
-          <li><span class="tn">02</span>MiCA enforcement timeline</li>
-          <li><span class="tn">03</span>Tokenized treasuries AUM record</li>
-          <li><span class="tn">04</span>Deutsche Bank custody expansion</li>
-          <li><span class="tn">05</span>UCITS crypto allocation rules</li>
-          <li><span class="tn">06</span>Stablecoin reserve transparency</li>
-          <li><span class="tn">07</span>Bank custody licensing Europe</li>
+          {trendingItems.length > 0 ? trendingItems.map((item, i) => {
+            const title = String(item.fields?.title || '');
+            const links = item.fields?.links;
+            const urls = Array.isArray(links)
+              ? links.filter((u): u is string => typeof u === 'string' && u.length > 0)
+              : typeof links === 'string' && links ? [links] : [];
+            const publisherField = item.fields?.publisher;
+            const sources = Array.isArray(publisherField)
+              ? publisherField.filter((s): s is string => typeof s === 'string' && s.length > 0)
+              : typeof publisherField === 'string' && publisherField ? [publisherField] : [];
+            return (
+              <li
+                class="news-item"
+                data-sources={JSON.stringify(sources.length ? sources : ['News'])}
+                data-urls={JSON.stringify(urls)}
+              >
+                <span class="tn">{String(i + 1).padStart(2, '0')}</span>{title}
+              </li>
+            );
+          }) : (
+            <li style="color:var(--text-3);font-size:.75rem">No trending items this week.</li>
+          )}
         </ul>
       </div>
 
@@ -1178,7 +1196,7 @@ document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); });
 
     // Handle news item clicks
-    const newsContainers = document.querySelectorAll('.feed, .featured-scroll');
+    const newsContainers = document.querySelectorAll('.feed, .featured-scroll, .trending');
     console.log('[News Popup] Found containers:', newsContainers.length);
     if (newsContainers.length === 0) {
       console.log('[News Popup] No containers found');
