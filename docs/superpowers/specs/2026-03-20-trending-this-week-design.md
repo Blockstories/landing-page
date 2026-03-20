@@ -89,7 +89,7 @@ const trendingItems = isBuildTime ? [] : getTrending(newsItems);
 Currently fetches `getLatestNews({ paging: { limit: 10 } })` and maps the result to `NewsItem[]` (losing `entityRelevance`). Changes:
 
 1. Increase the `getLatestNews` call to `limit: 50` to widen the candidate pool.
-2. Declare `let rawLatestItems: MappedRecord[] = []` **before** the `if (!isBuildTime)` block. Inside the block, after `latestResult` is resolved, assign `rawLatestItems = latestResult.data`. This follows the same hoisting pattern used for `newsItems` in `news.astro`.
+2. Declare `let rawLatestItems: MappedRecord[] = []` **before** the `if (!isBuildTime)` block. Inside the block, immediately after the line `const [latestResult, themedResults] = await Promise.all(...)` resolves and before the `latestNewsItems` processing, add: `rawLatestItems = latestResult.data;`. This follows the same hoisting pattern used for `newsItems` in `news.astro`.
 3. After the `if (!isBuildTime)` block, compute:
 
 ```ts
@@ -157,7 +157,7 @@ const newsContainers = document.querySelectorAll('.feed, .featured-scroll, .tren
 
 The existing click handler for `marketFlowList` uses `closest('.marketflow-item')` — it is **not** compatible with the trending items, which use the `.news-item` class. Adding `.trending` to the `marketFlowList` delegation would silently no-op on trending clicks.
 
-Instead, add a **second, independent event listener** on the `.trending` element. It must be placed **before** the `if (!marketFlowList) { return; }` guard (i.e. after `closePopup` is defined but before the `marketFlowList` guard), so it is always registered regardless of whether `.marketflow-list` is present in the DOM. The handler logic follows the same pattern used in `news.astro`:
+Instead, add a **second, independent event listener** on the `.trending` element. It must be placed after the `popupClose`, `popupOverlay`, and `keydown` listener attachments and immediately before the `const marketFlowList = document.querySelector(...)` line, so it is always registered regardless of whether `.marketflow-list` is present in the DOM. The handler logic follows the same pattern used in `news.astro`:
 
 ```js
 // This goes inside the popup IIFE (which runs bare in the <script> block — no DOMContentLoaded wrapper;
