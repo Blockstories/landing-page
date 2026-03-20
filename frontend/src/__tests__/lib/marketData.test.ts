@@ -1,5 +1,17 @@
-import { describe, it, expect } from 'vitest';
-import { formatLargeUsd, formatPercent, formatBtcPrice, pricesToSvgPath } from '../../lib/marketData.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { formatLargeUsd, formatPercent, formatBtcPrice, pricesToSvgPath, fetchMarketSnapshot, _resetCacheForTesting } from '../../lib/marketData.js';
+
+// Mock global fetch
+const mockFetch = vi.fn();
+vi.stubGlobal('fetch', mockFetch);
+
+function makeResponse(body: unknown, ok = true, status = 200): Response {
+  return {
+    ok,
+    status,
+    json: async () => body,
+  } as unknown as Response;
+}
 
 describe('formatLargeUsd', () => {
   it('returns em dash for null', () => {
@@ -81,5 +93,85 @@ describe('pricesToSvgPath', () => {
     const result = pricesToSvgPath([100, 200]);
     const linePoints = result.line.replace('M ', '');
     expect(result.fill.startsWith('M ' + linePoints)).toBe(true);
+  });
+});
+
+describe('fetchMarketSnapshot', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset the module-level cache so each test starts with a fresh fetch.
+    // vi.resetModules() would NOT work here because the import binding is already
+    // resolved — we use a dedicated reset helper instead.
+    _resetCacheForTesting();
+  });
+
+  it('returns correctly shaped object from successful API responses', async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeResponse({
+        data: {
+          total_market_cap: { usd: 3_420_000_000_000 },
+          market_cap_change_percentage_24h_usd: 1.9,
+          market_cap_percentage: { btc: 54.2 },
+        }
+      }))
+      .mockResolvedValueOnce(makeResponse({
+        bitcoin: { usd: 94280, usd_24h_change: 2.4 }
+      }))
+      .mockResolvedValueOnce(makeResponse([
+        { market_cap: 100_000_000_000 },
+        { market_cap: 60_000_000_000 },
+      ]))
+      .mockResolvedValueOnce(makeResponse({
+        data: [{ value: '72', value_classification: 'Greed' }]
+      }))
+      .mockResolvedValueOnce(makeResponse({
+        prices: [[1000, 90000], [2000, 92000], [3000, 94280]]
+      }));
+
+    const result = await fetchMarketSnapshot();
+
+    expect(result.totalMarketCap).toBe(3_420_000_000_000);
+    expect(result.marketCapChange24h).toBe(1.9);
+    expect(result.btcDominance).toBe(54.2);
+    expect(result.btcPrice).toBe(94280);
+    expect(result.btcChange24h).toBe(2.4);
+    expect(result.stablecoinMarketCap).toBe(160_000_000_000);
+    expect(result.fearGreedValue).toBe(72);
+    expect(result.fearGreedLabel).toBe('Greed');
+    expect(result.btcPriceHistory).toEqual([90000, 92000, 94280]);
+  });
+
+  it('returns null fields when one API call fails (non-2xx)', async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeResponse({ error: 'rate limited' }, false, 429)) // global fails
+      .mockResolvedValueOnce(makeResponse({ bitcoin: { usd: 94280, usd_24h_change: 2.4 } }))
+      .mockResolvedValueOnce(makeResponse([]))
+      .mockResolvedValueOnce(makeResponse({ data: [{ value: '72', value_classification: 'Greed' }] }))
+      .mockResolvedValueOnce(makeResponse({ prices: [] }));
+
+    const result = await fetchMarketSnapshot();
+
+    // Global fields should be null
+    expect(result.totalMarketCap).toBeNull();
+    expect(result.btcDominance).toBeNull();
+    expect(result.marketCapChange24h).toBeNull();
+    // Other APIs still succeeded
+    expect(result.btcPrice).toBe(94280);
+    expect(result.fearGreedValue).toBe(72);
+  });
+
+  it('returns null fields when one API call throws (network error)', async () => {
+    mockFetch
+      .mockResolvedValueOnce(makeResponse({ data: { total_market_cap: { usd: 1e12 }, market_cap_change_percentage_24h_usd: 1, market_cap_percentage: { btc: 50 } } }))
+      .mockRejectedValueOnce(new Error('network error')) // BTC price fails
+      .mockResolvedValueOnce(makeResponse([]))
+      .mockResolvedValueOnce(makeResponse({ data: [{ value: '50', value_classification: 'Neutral' }] }))
+      .mockResolvedValueOnce(makeResponse({ prices: [] }));
+
+    const result = await fetchMarketSnapshot();
+
+    expect(result.btcPrice).toBeNull();
+    expect(result.btcChange24h).toBeNull();
+    expect(result.totalMarketCap).toBe(1e12); // other APIs unaffected
   });
 });
