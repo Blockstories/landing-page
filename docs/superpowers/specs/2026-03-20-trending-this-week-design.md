@@ -41,7 +41,8 @@ export function getTrending(items: MappedRecord[], limit = 5): MappedRecord[] {
 
 - Pure function; no I/O, no side effects.
 - `entityRelevance` missing or null → treated as `0`.
-- `Created At` date parsing: if the string is invalid, `isNaN(t)` excludes the record.
+- `Created At` date parsing: if the string is invalid, `isNaN(t)` excludes the record. The cutoff uses `>=` so an item exactly at the boundary is included.
+- `item.created_at` is a valid top-level field: the underlying `Record` interface (in `backend/integrations/softr.ts`) declares `created_at?: string`.
 - Default limit is 5 (matches product requirement); callers may override.
 
 ---
@@ -132,8 +133,9 @@ The existing click handler for `marketFlowList` uses `closest('.marketflow-item'
 Instead, add a **second, independent event listener** on the `.trending` element. It must be placed **before** the `if (!marketFlowList) { return; }` guard (i.e. after `closePopup` is defined but before the `marketFlowList` guard), so it is always registered regardless of whether `.marketflow-list` is present in the DOM. The handler logic follows the same pattern used in `news.astro`:
 
 ```js
-// Place BEFORE the `if (!marketFlowList) { return; }` guard, inside the same IIFE
-// (after closePopup is defined — openPopup/closePopup must be in scope)
+// This goes inside the IIFE that is itself nested in the DOMContentLoaded handler.
+// Place BEFORE the `if (!marketFlowList) { return; }` guard,
+// after closePopup is defined — openPopup/closePopup must already be in scope.
 const trendingList = document.querySelector('.trending');
 if (trendingList) {
   trendingList.addEventListener('click', (e) => {
@@ -173,6 +175,7 @@ New file: `frontend/src/__tests__/lib/newsUtils.test.ts`
 | Test | Assertion |
 |------|-----------|
 | Items older than 7 days excluded | Items whose `Created At` is more than 7 days before now are not returned |
+| Boundary item included | An item whose timestamp equals exactly `Date.now() - 7 days` is included (`t >= cutoff`) |
 | Items within 7 days included | Items with `Created At` within 7 days are candidates |
 | Sorted by entityRelevance descending | Higher-relevance item appears first |
 | Missing entityRelevance treated as 0 | Item without `entityRelevance` sorts below one with value `1` |
@@ -197,6 +200,6 @@ All tests use Vitest; no mocking required (pure function).
 | File | Change |
 |------|--------|
 | `frontend/src/lib/newsUtils.ts` | **NEW** — `getTrending` utility |
-| `frontend/src/__tests__/lib/newsUtils.test.ts` | **NEW** — 6 unit tests |
+| `frontend/src/__tests__/lib/newsUtils.test.ts` | **NEW** — 7 unit tests |
 | `frontend/src/pages/news.astro` | Import `getTrending`; compute `trendingItems`; replace hardcoded list; extend popup container selector |
 | `frontend/src/pages/index.astro` | Import `getTrending`; bump fetch limit to 50; retain `latestResult.data`; compute `trendingItems`; replace hardcoded list; extend popup container selector |
