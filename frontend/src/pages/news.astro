@@ -3,6 +3,8 @@ import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { getLatestNews, getNewsForThemes, type MappedRecord } from '../../../backend/services/softrService.js';
+import { fetchMarketSnapshot, formatLargeUsd, formatPercent, formatBtcPrice, pricesToSvgPath } from '../lib/marketData.js';
+import type { MarketSnapshot } from '../lib/marketData.js';
 
 const pageStart = performance.now();
 console.log(`[news.astro] Starting render`);
@@ -49,6 +51,27 @@ if (!isBuildTime) {
     console.error("[news.astro] Failed to fetch news:", error);
   }
 }
+
+const _nullMarket: MarketSnapshot = {
+  btcPrice: null, btcChange24h: null, totalMarketCap: null,
+  marketCapChange24h: null, btcDominance: null, stablecoinMarketCap: null,
+  fearGreedValue: null, fearGreedLabel: null, btcPriceHistory: null,
+};
+let market: MarketSnapshot = _nullMarket;
+
+if (!isBuildTime) {
+  try {
+    market = await fetchMarketSnapshot();
+  } catch (e) {
+    console.error('[news.astro] Failed to fetch market data:', e);
+  }
+}
+
+const btcSparkline = pricesToSvgPath(market.btcPriceHistory ?? []);
+const btcHistory = market.btcPriceHistory ?? [];
+const btcMin = btcHistory.length > 0 ? Math.min(...btcHistory) : null;
+const btcMax = btcHistory.length > 0 ? Math.max(...btcHistory) : null;
+const btcMid = btcMin !== null && btcMax !== null ? (btcMin + btcMax) / 2 : null;
 
 const totalTime = performance.now() - pageStart;
 console.log(`[news.astro] Total SSR time: ${totalTime.toFixed(2)}ms`);
@@ -751,8 +774,10 @@ function getFilterCategory(theme: string): string {
               <div class="cw-period">24h</div>
             </div>
             <div class="cw-row">
-              <span class="cw-val">$94,280</span>
-              <span class="cw-chg up">▲ $2,208 +2.4%</span>
+              <span class="cw-val">{formatBtcPrice(market.btcPrice)}</span>
+              <span class={`cw-chg ${market.btcChange24h != null && market.btcChange24h > 0 ? 'up' : market.btcChange24h != null && market.btcChange24h < 0 ? 'down' : ''}`}>
+                {formatPercent(market.btcChange24h)}
+              </span>
             </div>
             <div class="cw-chart">
               <div class="cw-spark">
@@ -760,14 +785,23 @@ function getFilterCategory(theme: string): string {
                   <line class="grid-line" x1="0" y1="8" x2="200" y2="8"/>
                   <line class="grid-line" x1="0" y1="20" x2="200" y2="20"/>
                   <line class="grid-line" x1="0" y1="32" x2="200" y2="32"/>
-                  <path class="spark-fill" d="M0,32 L8,30 L16,28 L24,31 L32,27 L40,24 L48,26 L56,22 L64,20 L72,18 L80,21 L88,17 L96,15 L104,16 L112,14 L120,12 L128,13 L136,11 L144,10 L152,12 L160,9 L168,8 L176,10 L184,7 L192,8 L200,6 L200,40 L0,40Z" fill="var(--green)"/>
-                  <path d="M0,32 L8,30 L16,28 L24,31 L32,27 L40,24 L48,26 L56,22 L64,20 L72,18 L80,21 L88,17 L96,15 L104,16 L112,14 L120,12 L128,13 L136,11 L144,10 L152,12 L160,9 L168,8 L176,10 L184,7 L192,8 L200,6" stroke="var(--green)"/>
+                  {btcSparkline.fill ? (
+                    <>
+                      <path class="spark-fill" d={btcSparkline.fill} fill="var(--green)"/>
+                      <path d={btcSparkline.line} stroke="var(--green)" fill="none"/>
+                    </>
+                  ) : (
+                    <>
+                      <path class="spark-fill" d="M0,32 L8,30 L16,28 L24,31 L32,27 L40,24 L48,26 L56,22 L64,20 L72,18 L80,21 L88,17 L96,15 L104,16 L112,14 L120,12 L128,13 L136,11 L144,10 L152,12 L160,9 L168,8 L176,10 L184,7 L192,8 L200,6 L200,40 L0,40Z" fill="var(--green)"/>
+                      <path d="M0,32 L8,30 L16,28 L24,31 L32,27 L40,24 L48,26 L56,22 L64,20 L72,18 L80,21 L88,17 L96,15 L104,16 L112,14 L120,12 L128,13 L136,11 L144,10 L152,12 L160,9 L168,8 L176,10 L184,7 L192,8 L200,6" stroke="var(--green)" fill="none"/>
+                    </>
+                  )}
                 </svg>
               </div>
               <div class="cw-y">
-                <span>$94.5K</span>
-                <span>$93.2K</span>
-                <span>$92.0K</span>
+                <span>{formatBtcPrice(btcMax)}</span>
+                <span>{formatBtcPrice(btcMid)}</span>
+                <span>{formatBtcPrice(btcMin)}</span>
               </div>
             </div>
             <div class="cw-x">
@@ -783,8 +817,10 @@ function getFilterCategory(theme: string): string {
               <div class="cw-period">24h</div>
             </div>
             <div class="cw-row">
-              <span class="cw-val">$3.42T</span>
-              <span class="cw-chg up">▲ +1.9%</span>
+              <span class="cw-val">{formatLargeUsd(market.totalMarketCap)}</span>
+              <span class={`cw-chg ${market.marketCapChange24h != null && market.marketCapChange24h > 0 ? 'up' : market.marketCapChange24h != null && market.marketCapChange24h < 0 ? 'down' : ''}`}>
+                {formatPercent(market.marketCapChange24h)}
+              </span>
             </div>
             <div class="cw-chart">
               <div class="cw-spark">
@@ -815,8 +851,8 @@ function getFilterCategory(theme: string): string {
               <div class="cw-period">30d</div>
             </div>
             <div class="cw-row">
-              <span class="cw-val">$218B</span>
-              <span class="cw-chg up">▲ +4.2%</span>
+              <span class="cw-val">{formatLargeUsd(market.stablecoinMarketCap)}</span>
+              <span class="cw-chg">—</span>
             </div>
             <div class="cw-chart">
               <div class="cw-spark">
