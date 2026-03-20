@@ -127,10 +127,11 @@ const newsContainers = document.querySelectorAll('.feed, .featured-scroll, .tren
 
 The existing click handler for `marketFlowList` uses `closest('.marketflow-item')` — it is **not** compatible with the trending items, which use the `.news-item` class. Adding `.trending` to the `marketFlowList` delegation would silently no-op on trending clicks.
 
-Instead, add a **second, independent event listener** on the `.trending` element, placed after the existing `marketFlowList` setup. The handler logic follows the same pattern used in `news.astro`:
+Instead, add a **second, independent event listener** on the `.trending` element. It must be placed **before** the `if (!marketFlowList) { return; }` guard (i.e. after `closePopup` is defined but before the `marketFlowList` guard), so it is always registered regardless of whether `.marketflow-list` is present in the DOM. The handler logic follows the same pattern used in `news.astro`:
 
 ```js
-// Add below the existing marketFlowList block, still inside the same IIFE
+// Place BEFORE the `if (!marketFlowList) { return; }` guard, inside the same IIFE
+// (after closePopup is defined — openPopup/closePopup must be in scope)
 const trendingList = document.querySelector('.trending');
 if (trendingList) {
   trendingList.addEventListener('click', (e) => {
