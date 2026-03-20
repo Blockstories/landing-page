@@ -47,6 +47,33 @@ export function getTrending(items: MappedRecord[], limit = 5): MappedRecord[] {
 
 ---
 
+## Imports
+
+### news.astro
+
+Add one import line after the existing `softrService` import:
+
+```ts
+import { getTrending } from '../lib/newsUtils.js';
+```
+
+### index.astro
+
+The existing softrService import on line 6 currently reads:
+
+```ts
+import { getLatestNews, getNewsForThemes, MappedRecord } from '../../../backend/services/softrService.js';
+```
+
+`MappedRecord` is a type, so update it to use the `type` modifier and add `getTrending`:
+
+```ts
+import { getLatestNews, getNewsForThemes, type MappedRecord } from '../../../backend/services/softrService.js';
+import { getTrending } from '../lib/newsUtils.js';
+```
+
+---
+
 ## Data Sources
 
 ### news.astro
@@ -133,7 +160,8 @@ The existing click handler for `marketFlowList` uses `closest('.marketflow-item'
 Instead, add a **second, independent event listener** on the `.trending` element. It must be placed **before** the `if (!marketFlowList) { return; }` guard (i.e. after `closePopup` is defined but before the `marketFlowList` guard), so it is always registered regardless of whether `.marketflow-list` is present in the DOM. The handler logic follows the same pattern used in `news.astro`:
 
 ```js
-// This goes inside the IIFE that is itself nested in the DOMContentLoaded handler.
+// This goes inside the popup IIFE (which runs bare in the <script> block — no DOMContentLoaded wrapper;
+// Astro defers <script> tags so the DOM is ready at execution time).
 // Place BEFORE the `if (!marketFlowList) { return; }` guard,
 // after closePopup is defined — openPopup/closePopup must already be in scope.
 const trendingList = document.querySelector('.trending');
