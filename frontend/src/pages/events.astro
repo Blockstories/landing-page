@@ -880,13 +880,45 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
   const form=document.getElementById('sponsorForm');
   if(!form)return;
-  form.addEventListener('submit',function(e){
+  form.addEventListener('submit',async function(e){
     e.preventDefault();
     const btn=form.querySelector('.sf-submit');
-    const orig=btn.textContent;
-    btn.textContent='Inquiry Sent!';
-    btn.style.background='var(--green)';
-    setTimeout(()=>{btn.textContent=orig;btn.style.background=''},3000);
+    const origText=btn.textContent;
+    btn.disabled=true;
+    btn.textContent='Sending\u2026';
+    const body={
+      name:(document.getElementById('sf-name')).value,
+      email:(document.getElementById('sf-email')).value,
+      company:(document.getElementById('sf-company')).value,
+      interest:(document.getElementById('sf-interest')).value,
+      message:(document.getElementById('sf-message')).value
+    };
+    function showError(msg){
+      let errEl=form.querySelector('.sf-error');
+      if(!errEl){
+        errEl=document.createElement('p');
+        errEl.className='sf-error';
+        errEl.style.cssText='color:#f87171;font-size:.75rem;margin-top:8px';
+        form.appendChild(errEl);
+      }
+      errEl.textContent=msg;
+    }
+    try{
+      const res=await fetch('/api/sponsor',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(res.ok){
+        const success=document.createElement('p');
+        success.style.cssText='color:var(--green);font-family:var(--body);font-size:.9rem;padding:8px 0';
+        success.textContent="Thanks! We'll send you the full partnership deck within 24 hours.";
+        form.replaceWith(success);
+      } else {
+        const data=await res.json();
+        btn.disabled=false;btn.textContent=origText;
+        showError(data.error||'Something went wrong. Please try again.');
+      }
+    } catch {
+      btn.disabled=false;btn.textContent=origText;
+      showError('Network error. Please try again.');
+    }
   });
 })();
 
