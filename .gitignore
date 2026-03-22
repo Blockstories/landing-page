@@ -1,6 +1,9 @@
 notes.txt
 test.json
 openapi
+*/*/.DS_Store
+*/.DS_Store
+.DS_Store
 
 # Logs
 logs
